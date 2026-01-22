@@ -247,10 +247,6 @@ secret: u.secret
 }));
 await window.storage.set('comcesa_users', JSON.stringify(usersToSave), true);
 console.log('✅ Configuraciones guardadas en la nube');
-} catch(error) {
-console.error('Error al guardar usuarios:', error);
-alert('⚠️ Error al guardar configuración. Por favor intenta de nuevo.');
-}
 }
 
 async function saveRecords() {
@@ -553,6 +549,7 @@ alert('Error al borrar datos: ' + error.message);
 </body>
 
 </html>
+
 
 
 
