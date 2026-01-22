@@ -23,7 +23,7 @@ h1{font-size:24px;color:var(--primary);text-align:center}
 .subtitle{text-align:center;color:var(--muted);margin-bottom:25px;font-size:14px}
 .input-group{margin-bottom:18px}
 label{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
-input{width:100%;padding:11px;border:1px solid var(--border);border-radius:4px}
+input,select{width:100%;padding:11px;border:1px solid var(--border);border-radius:4px}
 .btn{width:100%;padding:12px;font-weight:600;border:none;border-radius:4px;cursor:pointer}
 .btn-primary{background:var(--primary);color:#fff}
 .btn-secondary{background:#E5E7EB;margin-top:10px}
@@ -51,6 +51,7 @@ td{padding:12px;border-bottom:1px solid var(--border)}
 .setup-steps{background:#F9FAFB;padding:15px;border-radius:4px;margin:15px 0}
 .setup-steps ol{margin-left:20px}
 .setup-steps li{margin:8px 0;font-size:14px}
+.loading{text-align:center;padding:20px;color:var(--muted)}
 @media(max-width:768px){.grid-2,.stats{grid-template-columns:1fr}}
 </style>
 </head>
@@ -67,9 +68,13 @@ td{padding:12px;border-bottom:1px solid var(--border)}
 <input id="username">
 </div>
 <button class="btn btn-primary" onclick="checkUser()">Continuar</button>
+<div class="alert alert-info" style="margin-top:15px">
+<strong>🔐 Autenticación con Google Authenticator</strong><br>
+Sistema 100% gratuito y seguro
+</div>
 </div>
 
-<!-- CONFIGURACIÓN INICIAL (PRIMERA VEZ) -->
+<!-- CONFIGURACIÓN INICIAL -->
 <div id="setupScreen" class="container hidden">
 <h1>Configuración Inicial</h1>
 <p class="subtitle">Hola, <span id="setupUserName"></span></p>
@@ -139,19 +144,18 @@ El código cambia cada 30 segundos
 <div class="stat-card"><div class="stat-number" id="currentDate"></div>Fecha</div>
 </div>
 
-<!-- FILTROS DEL HISTORIAL -->
 <div class="card" style="margin:20px 0">
 <h3 style="margin-bottom:15px;color:var(--primary)">🔍 Filtrar Historial</h3>
 <div class="grid-2">
 <div class="input-group" style="margin:0">
 <label>Empleado</label>
-<select id="filterUser" onchange="renderAdminRecords()" style="padding:11px;border:1px solid var(--border);border-radius:4px;width:100%">
+<select id="filterUser" onchange="renderAdminRecords()">
 <option value="">Todos los empleados</option>
 </select>
 </div>
 <div class="input-group" style="margin:0">
 <label>Fecha</label>
-<input type="date" id="filterDate" onchange="renderAdminRecords()" style="padding:11px">
+<input type="date" id="filterDate" onchange="renderAdminRecords()">
 </div>
 </div>
 <div style="margin-top:15px;display:flex;gap:10px">
@@ -165,7 +169,6 @@ El código cambia cada 30 segundos
 <h2 style="color:var(--primary)">Historial de Asistencias <span id="recordCount" style="font-size:16px;color:var(--muted)"></span></h2>
 <div>
 <button class="btn btn-primary" onclick="exportCSV()" style="margin:0;width:auto;padding:8px 16px">📥 Exportar CSV</button>
-<button class="btn btn-danger" onclick="clearAllData()" style="margin:0 0 0 10px;width:auto;padding:8px 16px">🗑️ Borrar Todo</button>
 </div>
 </div>
 
@@ -177,6 +180,9 @@ El código cambia cada 30 segundos
 </div>
 
 <script>
+// ================= CONFIGURACIÓN GOOGLE SHEETS =================
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyIRI8GCvTKfELtvipjrY0zP2I88TWiTiYJSZzR-qpodQ3K3Hjp1NpyqxZ2IASAzFJe_g/exec';
+
 // ================= USUARIOS =================
 const users = [
 { id:1, username:'josue.rodriguez', name:'Josue Rodriguez', role:'empleado', secret:null },
@@ -209,346 +215,326 @@ let records = [];
 let currentUser = null;
 let dataLoaded = false;
 
-// ================= SISTEMA DE ALMACENAMIENTO PERMANENTE =================
+// ================= CARGAR DATOS DESDE GOOGLE SHEETS =================
 async function loadData() {
-if(dataLoaded) return;
+  if(dataLoaded) return;
   
-try {
-// Cargar configuraciones de usuarios (secrets de Google Authenticator)
-// NOTA: Se usa 'shared: true' para que todos los dispositivos vean los mismos datos
-const usersData = await window.storage.get('comcesa_users', true);
-if(usersData) {
-const savedUsers = JSON.parse(usersData.value);
-savedUsers.forEach(saved => {
-const user = users.find(u => u.id === saved.id);
-if(user) user.secret = saved.secret;
-});
-console.log('✅ Configuraciones de usuarios cargadas');
-}
-
-// Cargar registros de asistencia (COMPARTIDOS entre todos los dispositivos)
-const recordsData = await window.storage.get('comcesa_records', true);
-if(recordsData) {
-records = JSON.parse(recordsData.value);
-console.log(`✅ ${records.length} registros cargados desde la nube`);
-}
-} catch(error) {
-console.log('ℹ️ Primera vez usando el sistema - iniciando desde cero');
-}
+  try {
+    // Cargar usuarios
+    const usersResponse = await fetch(SCRIPT_URL + '?action=getUsers');
+    const savedUsers = await usersResponse.json();
+    
+    savedUsers.forEach(saved => {
+      const user = users.find(u => u.id === saved.id);
+      if(user && saved.secret) user.secret = saved.secret;
+    });
+    
+    // Cargar registros
+    const recordsResponse = await fetch(SCRIPT_URL + '?action=getRecords');
+    records = await recordsResponse.json();
+    
+    console.log('✅ Datos cargados desde Google Sheets');
+  } catch(error) {
+    console.log('ℹ️ Iniciando desde cero');
+  }
   
-dataLoaded = true;
+  dataLoaded = true;
 }
 
-async function saveUsers() {
-try {
-const usersToSave = users.filter(u => u.secret).map(u => ({
-id: u.id,
-secret: u.secret
-}));
-await window.storage.set('comcesa_users', JSON.stringify(usersToSave), true);
-console.log('✅ Configuraciones guardadas en la nube');
+async function saveUser(userId, secret) {
+  try {
+    const user = users.find(u => u.id === userId);
+    const formData = new FormData();
+    formData.append('action', 'saveUser');
+    formData.append('data', JSON.stringify({
+      id: userId,
+      username: user.username,
+      secret: secret
+    }));
+    
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: formData
+    });
+    
+    console.log('✅ Usuario guardado en Google Sheets');
+  } catch(error) {
+    console.error('Error al guardar usuario');
+  }
 }
 
-async function saveRecords() {
-try {
-await window.storage.set('comcesa_records', JSON.stringify(records), true);
-console.log('✅ Registros guardados en la nube');
+async function saveRecord(record) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'saveRecord');
+    formData.append('data', JSON.stringify(record));
+    
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: formData
+    });
+    
+    console.log('✅ Registro guardado en Google Sheets');
+  } catch(error) {
+    console.error('Error al guardar registro');
+  }
 }
 
-// Cargar datos al iniciar
 window.addEventListener('load', loadData);
 
-// ================= FUNCIONES TOTP (Google Authenticator) =================
+// ================= FUNCIONES TOTP =================
 function generateSecret() {
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-let secret = '';
-for(let i = 0; i < 32; i++) {
-secret += chars.charAt(Math.floor(Math.random() * chars.length));
-}
-return secret;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let secret = '';
+  for(let i = 0; i < 32; i++) {
+    secret += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return secret;
 }
 
 function base32Decode(secret) {
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-let bits = '';
-for(let i = 0; i < secret.length; i++) {
-const val = alphabet.indexOf(secret.charAt(i).toUpperCase());
-if(val === -1) continue;
-bits += val.toString(2).padStart(5, '0');
-}
-const bytes = [];
-for(let i = 0; i + 8 <= bits.length; i += 8) {
-bytes.push(parseInt(bits.substr(i, 8), 2));
-}
-return new Uint8Array(bytes);
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for(let i = 0; i < secret.length; i++) {
+    const val = alphabet.indexOf(secret.charAt(i).toUpperCase());
+    if(val === -1) continue;
+    bits += val.toString(2).padStart(5, '0');
+  }
+  const bytes = [];
+  for(let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.substr(i, 8), 2));
+  }
+  return new Uint8Array(bytes);
 }
 
 function generateTOTP(secret) {
-const key = base32Decode(secret);
-const epoch = Math.floor(Date.now() / 1000);
-const time = Math.floor(epoch / 30);
-const timeHex = time.toString(16).padStart(16, '0');
-const timeBytes = new Uint8Array(8);
-for(let i = 0; i < 8; i++) {
-timeBytes[i] = parseInt(timeHex.substr(i * 2, 2), 16);
-}
-const shaObj = new jsSHA("SHA-1", "UINT8ARRAY");
-shaObj.setHMACKey(key, "UINT8ARRAY");
-shaObj.update(timeBytes);
-const hmac = shaObj.getHMAC("UINT8ARRAY");
-const offset = hmac[hmac.length - 1] & 0xf;
-const binary = ((hmac[offset] & 0x7f) << 24) |
-((hmac[offset + 1] & 0xff) << 16) |
-((hmac[offset + 2] & 0xff) << 8) |
-(hmac[offset + 3] & 0xff);
-const otp = (binary % 1000000).toString().padStart(6, '0');
-return otp;
+  const key = base32Decode(secret);
+  const epoch = Math.floor(Date.now() / 1000);
+  const time = Math.floor(epoch / 30);
+  const timeHex = time.toString(16).padStart(16, '0');
+  const timeBytes = new Uint8Array(8);
+  for(let i = 0; i < 8; i++) {
+    timeBytes[i] = parseInt(timeHex.substr(i * 2, 2), 16);
+  }
+  const shaObj = new jsSHA("SHA-1", "UINT8ARRAY");
+  shaObj.setHMACKey(key, "UINT8ARRAY");
+  shaObj.update(timeBytes);
+  const hmac = shaObj.getHMAC("UINT8ARRAY");
+  const offset = hmac[hmac.length - 1] & 0xf;
+  const binary = ((hmac[offset] & 0x7f) << 24) |
+                 ((hmac[offset + 1] & 0xff) << 16) |
+                 ((hmac[offset + 2] & 0xff) << 8) |
+                 (hmac[offset + 3] & 0xff);
+  const otp = (binary % 1000000).toString().padStart(6, '0');
+  return otp;
 }
 
 // ================= VERIFICAR USUARIO =================
-function checkUser() {
-const user = users.find(u => u.username === username.value);
-if(!user) return alert("❌ Usuario no encontrado");
-currentUser = user;
+async function checkUser() {
+  await loadData();
+  const user = users.find(u => u.username === username.value);
+  if(!user) return alert("❌ Usuario no encontrado");
+  currentUser = user;
 
-// Si no tiene secret configurado, mostrar setup
-if(!user.secret) {
-showSetupScreen();
-} else {
-userName.textContent = user.name;
-showScreen("verificationScreen");
-}
+  if(!user.secret) {
+    showSetupScreen();
+  } else {
+    userName.textContent = user.name;
+    showScreen("verificationScreen");
+  }
 }
 
-// ================= PANTALLA DE CONFIGURACIÓN =================
+// ================= CONFIGURACIÓN =================
 function showSetupScreen() {
-setupUserName.textContent = currentUser.name;
+  setupUserName.textContent = currentUser.name;
+  const secret = generateSecret();
+  currentUser.tempSecret = secret;
+  secretKey.textContent = secret;
   
-// Generar nuevo secret
-const secret = generateSecret();
-currentUser.tempSecret = secret;
+  document.getElementById('qrcode').innerHTML = '';
+  const qrText = `otpauth://totp/COMCESA:${currentUser.username}?secret=${secret}&issuer=COMCESA`;
+  new QRCode(document.getElementById("qrcode"), {
+    text: qrText,
+    width: 200,
+    height: 200
+  });
   
-// Mostrar secret
-secretKey.textContent = secret;
-  
-// Generar QR code
-document.getElementById('qrcode').innerHTML = '';
-const qrText = `otpauth://totp/COMCESA:${currentUser.username}?secret=${secret}&issuer=COMCESA`;
-new QRCode(document.getElementById("qrcode"), {
-text: qrText,
-width: 200,
-height: 200
-});
-  
-showScreen("setupScreen");
+  showScreen("setupScreen");
 }
 
-function completeSetup() {
-const inputCode = setupCodeInput.value;
-const validCode = generateTOTP(currentUser.tempSecret);
+async function completeSetup() {
+  const inputCode = setupCodeInput.value;
+  const validCode = generateTOTP(currentUser.tempSecret);
   
-if(inputCode === validCode) {
-currentUser.secret = currentUser.tempSecret;
-delete currentUser.tempSecret;
-saveUsers(); // Guardar configuración
-alert("✅ Configuración completada exitosamente");
-currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
-} else {
-alert("❌ Código incorrecto. Verifica que sea el código actual de tu app.");
-}
+  if(inputCode === validCode) {
+    currentUser.secret = currentUser.tempSecret;
+    delete currentUser.tempSecret;
+    await saveUser(currentUser.id, currentUser.secret);
+    alert("✅ Configuración completada exitosamente");
+    currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
+  } else {
+    alert("❌ Código incorrecto. Verifica que sea el código actual de tu app.");
+  }
 }
 
 // ================= VERIFICAR CÓDIGO =================
 function verifyCode() {
-const inputCode = codeInput.value;
-const validCode = generateTOTP(currentUser.secret);
+  const inputCode = codeInput.value;
+  const validCode = generateTOTP(currentUser.secret);
   
-if(inputCode === validCode) {
-currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
-} else {
-alert("❌ Código incorrecto");
-}
+  if(inputCode === validCode) {
+    currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
+  } else {
+    alert("❌ Código incorrecto");
+  }
 }
 
-// ================= VALIDACIONES =================
-function recordAttendance(type) {
-const today = new Date().toLocaleDateString('es-GT');
-const todayRecords = records.filter(r => r.userId === currentUser.id && r.timestamp.startsWith(today));
-const last = todayRecords.slice(-1)[0];
-if(type === "salida" && !last) return alert("❌ No puedes marcar salida sin entrada");
-if(last && last.type === type) return alert("⚠️ Ya marcaste " + type + " hoy");
-records.push({
-id: records.length + 1,
-userId: currentUser.id,
-name: currentUser.name,
-type,
-timestamp: new Date().toLocaleString('es-GT')
-});
-saveRecords(); // Guardar en almacenamiento permanente
-alert("✅ " + type.toUpperCase() + " registrada");
-showEmployeeScreen();
+// ================= REGISTRAR ASISTENCIA =================
+async function recordAttendance(type) {
+  const today = new Date().toLocaleDateString('es-GT');
+  const todayRecords = records.filter(r => r.userId === currentUser.id && r.timestamp.startsWith(today));
+  const last = todayRecords.slice(-1)[0];
+  
+  if(type === "salida" && !last) return alert("❌ No puedes marcar salida sin entrada");
+  if(last && last.type === type) return alert("⚠️ Ya marcaste " + type + " hoy");
+  
+  const newRecord = {
+    id: records.length + 1,
+    userId: currentUser.id,
+    name: currentUser.name,
+    type: type,
+    timestamp: new Date().toLocaleString('es-GT')
+  };
+  
+  records.push(newRecord);
+  await saveRecord(newRecord);
+  alert("✅ " + type.toUpperCase() + " registrada");
+  showEmployeeScreen();
 }
 
 // ================= PANTALLAS =================
 function showEmployeeScreen() {
-employeeName.textContent = currentUser.name;
-const today = new Date().toLocaleDateString('es-GT');
-employeeRecords.innerHTML = records
-.filter(r => r.userId === currentUser.id && r.timestamp.startsWith(today))
-.reverse()
-.map(r => `
-<div class="card">
-<strong>${r.type.toUpperCase()}</strong>
-<span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type}</span>
-<div>${r.timestamp}</div>
-</div>`).join("") || "<p>No hay registros hoy</p>";
-showScreen("employeeScreen");
+  employeeName.textContent = currentUser.name;
+  const today = new Date().toLocaleDateString('es-GT');
+  employeeRecords.innerHTML = records
+    .filter(r => r.userId === currentUser.id && r.timestamp.startsWith(today))
+    .reverse()
+    .map(r => `
+      <div class="card">
+        <strong>${r.type.toUpperCase()}</strong>
+        <span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type}</span>
+        <div>${r.timestamp}</div>
+      </div>`).join("") || "<p>No hay registros hoy</p>";
+  showScreen("employeeScreen");
 }
 
-function showAdminScreen() {
-totalEmployees.textContent = users.filter(u => u.role === 'empleado').length;
-totalRecords.textContent = records.length;
-currentDate.textContent = new Date().toLocaleDateString('es-GT');
+async function showAdminScreen() {
+  await loadData();
+  totalEmployees.textContent = users.filter(u => u.role === 'empleado').length;
+  totalRecords.textContent = records.length;
+  currentDate.textContent = new Date().toLocaleDateString('es-GT');
 
-// Cargar empleados en el filtro
-filterUser.innerHTML = `<option value="">Todos los empleados</option>` +
-users
-.filter(u => u.role === 'empleado')
-.map(u => `<option value="${u.id}">${u.name}</option>`)
-.join("");
+  filterUser.innerHTML = `<option value="">Todos los empleados</option>` +
+    users.filter(u => u.role === 'empleado')
+      .map(u => `<option value="${u.id}">${u.name}</option>`).join("");
 
-// Limpiar filtros y mostrar todo
-filterDate.value = '';
-renderAdminRecords();
-showScreen("adminScreen");
+  filterDate.value = '';
+  renderAdminRecords();
+  showScreen("adminScreen");
 }
 
-// ================= FILTROS DE HISTORIAL =================
+// ================= FILTROS =================
 function renderAdminRecords() {
-const userId = filterUser.value;
-const date = filterDate.value;
+  const userId = filterUser.value;
+  const date = filterDate.value;
+  let filtered = [...records];
 
-let filtered = [...records];
+  if(userId) filtered = filtered.filter(r => r.userId == userId);
+  if(date) {
+    const selectedDate = new Date(date + 'T00:00:00');
+    const dateStr = selectedDate.toLocaleDateString('es-GT');
+    filtered = filtered.filter(r => r.timestamp.startsWith(dateStr));
+  }
 
-// Filtrar por empleado
-if(userId) {
-filtered = filtered.filter(r => r.userId == userId);
-}
+  const filterText = userId || date ? ` (${filtered.length} de ${records.length})` : ` (${filtered.length} total)`;
+  recordCount.textContent = filterText;
 
-// Filtrar por fecha
-if(date) {
-const selectedDate = new Date(date + 'T00:00:00');
-const dateStr = selectedDate.toLocaleDateString('es-GT');
-filtered = filtered.filter(r => r.timestamp.startsWith(dateStr));
-}
-
-// Actualizar contador
-const filterText = userId || date ? ` (${filtered.length} de ${records.length})` : ` (${filtered.length} total)`;
-recordCount.textContent = filterText;
-
-// Renderizar tabla
-recordsBody.innerHTML = filtered
-.slice()
-.reverse()
-.map(r => `
-<tr>
-<td>${r.id}</td>
-<td>${r.name}</td>
-<td><span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type.toUpperCase()}</span></td>
-<td>${r.timestamp}</td>
-</tr>
-`).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">Sin registros para mostrar</td></tr>`;
+  recordsBody.innerHTML = filtered.slice().reverse()
+    .map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.name}</td>
+        <td><span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type.toUpperCase()}</span></td>
+        <td>${r.timestamp}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">Sin registros para mostrar</td></tr>`;
 }
 
 function filterToday() {
-const today = new Date();
-filterDate.value = today.toISOString().split('T')[0];
-renderAdminRecords();
+  const today = new Date();
+  filterDate.value = today.toISOString().split('T')[0];
+  renderAdminRecords();
 }
 
 function filterYesterday() {
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
-filterDate.value = yesterday.toISOString().split('T')[0];
-renderAdminRecords();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  filterDate.value = yesterday.toISOString().split('T')[0];
+  renderAdminRecords();
 }
 
 function clearFilters() {
-filterUser.value = '';
-filterDate.value = '';
-renderAdminRecords();
+  filterUser.value = '';
+  filterDate.value = '';
+  renderAdminRecords();
 }
 
 function showScreen(id) {
-document.querySelectorAll(".container").forEach(c => c.classList.add("hidden"));
-document.getElementById(id).classList.remove("hidden");
+  document.querySelectorAll(".container").forEach(c => c.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
 
 function logout() {
-currentUser = null;
-username.value = codeInput.value = setupCodeInput.value = "";
-showScreen("loginScreen");
+  currentUser = null;
+  username.value = codeInput.value = setupCodeInput.value = "";
+  showScreen("loginScreen");
 }
 
 function exportCSV() {
-// Obtener los registros filtrados actuales
-const userId = filterUser?.value;
-const date = filterDate?.value;
-let filtered = [...records];
+  const userId = filterUser?.value;
+  const date = filterDate?.value;
+  let filtered = [...records];
 
-if(userId) {
-filtered = filtered.filter(r => r.userId == userId);
-}
-if(date) {
-const selectedDate = new Date(date + 'T00:00:00');
-const dateStr = selectedDate.toLocaleDateString('es-GT');
-filtered = filtered.filter(r => r.timestamp.startsWith(dateStr));
-}
+  if(userId) filtered = filtered.filter(r => r.userId == userId);
+  if(date) {
+    const selectedDate = new Date(date + 'T00:00:00');
+    const dateStr = selectedDate.toLocaleDateString('es-GT');
+    filtered = filtered.filter(r => r.timestamp.startsWith(dateStr));
+  }
 
-// Generar CSV
-let csv = 'ID,Nombre,Tipo,Fecha y Hora\n';
-filtered.forEach(r => {
-csv += `${r.id},${r.name},${r.type},${r.timestamp}\n`;
-});
+  let csv = 'ID,Nombre,Tipo,Fecha y Hora\n';
+  filtered.forEach(r => {
+    csv += `${r.id},${r.name},${r.type},${r.timestamp}\n`;
+  });
 
-// Descargar
-const blob = new Blob([csv], {type: 'text/csv'});
-const url = window.URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-const fileName = userId || date ? 
-`asistencias_filtradas_${new Date().toISOString().split('T')[0]}.csv` :
-`asistencias_completas_${new Date().toISOString().split('T')[0]}.csv`;
-a.download = fileName;
-a.click();
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fileName = userId || date ? 
+    `asistencias_filtradas_${new Date().toISOString().split('T')[0]}.csv` :
+    `asistencias_completas_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = fileName;
+  a.click();
 
-alert(`✅ ${filtered.length} registros exportados a CSV`);
-}
-
-async function clearAllData() {
-if(!confirm('⚠️ ¿Estás seguro de borrar TODOS los datos?\n\n- Todos los registros de asistencia\n- Todas las configuraciones de Google Authenticator\n\nEsta acción NO se puede deshacer.')) {
-return;
-}
-  
-if(!confirm('🔴 ÚLTIMA CONFIRMACIÓN\n\n¿Realmente quieres BORRAR TODO?')) {
-return;
-}
-  
-try {
-await window.storage.delete('comcesa_users', true);
-await window.storage.delete('comcesa_records', true);
-records = [];
-users.forEach(u => u.secret = null);
-alert('✅ Todos los datos han sido borrados de la nube');
-logout();
-} catch(error) {
-alert('Error al borrar datos: ' + error.message);
-}
+  alert(`✅ ${filtered.length} registros exportados a CSV`);
 }
 </script>
 </body>
-
 </html>
+
+Conectar con Google Sheets
+
 
 
 
