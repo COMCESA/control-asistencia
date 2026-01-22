@@ -257,10 +257,6 @@ async function saveRecords() {
 try {
 await window.storage.set('comcesa_records', JSON.stringify(records), true);
 console.log('✅ Registros guardados en la nube');
-} catch(error) {
-console.error('Error al guardar registros:', error);
-alert('⚠️ Error al guardar registro. Por favor intenta de nuevo.');
-}
 }
 
 // Cargar datos al iniciar
@@ -557,5 +553,6 @@ alert('Error al borrar datos: ' + error.message);
 </body>
 
 </html>
+
 
 
