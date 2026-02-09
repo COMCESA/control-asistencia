@@ -24,7 +24,8 @@ h1{font-size:24px;color:var(--primary);text-align:center}
 .input-group{margin-bottom:18px}
 label{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
 input,select{width:100%;padding:11px;border:1px solid var(--border);border-radius:4px}
-.btn{width:100%;padding:12px;font-weight:600;border:none;border-radius:4px;cursor:pointer}
+.btn{width:100%;padding:12px;font-weight:600;border:none;border-radius:4px;cursor:pointer;transition:opacity 0.2s}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
 .btn-primary{background:var(--primary);color:#fff}
 .btn-secondary{background:#E5E7EB;margin-top:10px}
 .btn-success{background:var(--success);color:#fff}
@@ -45,6 +46,7 @@ td{padding:12px;border-bottom:1px solid var(--border)}
 .alert{padding:12px;border-radius:4px;margin-bottom:15px;font-size:14px}
 .alert-info{background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD}
 .alert-warning{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D}
+.alert-danger{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
 .qr-container{text-align:center;padding:20px;background:#fff;border:2px dashed var(--border);border-radius:8px;margin:20px 0}
 #qrcode{display:inline-block;padding:15px;background:#fff}
 .secret-key{background:#F3F4F6;padding:10px;border-radius:4px;font-family:monospace;font-size:14px;text-align:center;margin:10px 0;word-break:break-all}
@@ -52,12 +54,20 @@ td{padding:12px;border-bottom:1px solid var(--border)}
 .setup-steps ol{margin-left:20px}
 .setup-steps li{margin:8px 0;font-size:14px}
 .loading{text-align:center;padding:20px;color:var(--muted)}
+.spinner{border:3px solid var(--border);border-top:3px solid var(--primary);border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @media(max-width:768px){.grid-2,.stats{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<!-- LOADING INICIAL -->
+<div id="loadingScreen" class="container">
+<div class="spinner"></div>
+<p class="loading">Cargando datos del sistema...</p>
+</div>
+
 <!-- LOGIN -->
-<div id="loginScreen" class="container">
+<div id="loginScreen" class="container hidden">
 <div class="logo">
 <img src="https://tse4.mm.bing.net/th/id/OIP.FWDv-1kVSpV5Dz_OMAu4IgHaBo?rs=1">
 </div>
@@ -65,7 +75,7 @@ td{padding:12px;border-bottom:1px solid var(--border)}
 <p class="subtitle">Ingresa tu usuario</p>
 <div class="input-group">
 <label>Usuario</label>
-<input id="username">
+<input id="username" autocomplete="username">
 </div>
 <button class="btn btn-primary" onclick="checkUser()">Continuar</button>
 </div>
@@ -95,9 +105,9 @@ O ingresa manualmente esta clave:
 </div>
 <div class="input-group">
 <label>Ingresa el código de 6 dígitos que aparece en tu app</label>
-<input id="setupCodeInput" placeholder="000000" maxlength="6" type="tel">
+<input id="setupCodeInput" placeholder="000000" maxlength="6" type="tel" oninput="validateSetupCode()">
 </div>
-<button class="btn btn-primary" onclick="completeSetup()">Verificar y Continuar</button>
+<button id="setupVerifyBtn" class="btn btn-primary" onclick="completeSetup()" disabled>Verificar y Continuar</button>
 <button class="btn btn-secondary" onclick="logout()">Cancelar</button>
 </div>
 
@@ -110,9 +120,9 @@ O ingresa manualmente esta clave:
 </div>
 <div class="input-group">
 <label>Ingresa el código de 6 dígitos de tu app</label>
-<input id="codeInput" placeholder="000000" maxlength="6" type="tel">
+<input id="codeInput" placeholder="000000" maxlength="6" type="tel" oninput="validateVerifyCode()">
 </div>
-<button class="btn btn-primary" onclick="verifyCode()">Verificar</button>
+<button id="verifyBtn" class="btn btn-primary" onclick="verifyCode()" disabled>Verificar</button>
 <button class="btn btn-secondary" onclick="logout()">Cancelar</button>
 <div style="margin-top:15px;text-align:center;color:var(--muted);font-size:12px">
 El código cambia cada 30 segundos
@@ -177,7 +187,7 @@ El código cambia cada 30 segundos
 
 <script>
 // ================= CONFIGURACIÓN GOOGLE SHEETS =================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwq6oLSBKeriv20S-xs65O3WQxDdNXsdBoz-a8HiBqTvg_MinPGLKCZzWR8D2Cf6ujdA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxtPUghWCr15YwqD58qygLpg581-NAlR6GRQhvmzVhDby14CQutIHWIA7uvgpXsEuE/exec';
 
 // ================= USUARIOS =================
 const users = [
@@ -211,13 +221,40 @@ let records = [];
 let currentUser = null;
 let dataLoaded = false;
 
+// ================= UTILIDADES DE FECHA (ISO) =================
+function getISODate() {
+  return new Date().toISOString();
+}
+
+function formatDateForDisplay(isoString) {
+  const date = new Date(isoString);
+  return date.toLocaleString('es-GT', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+function getDateOnly(isoString) {
+  return isoString.split('T')[0];
+}
+
+function getTodayDateOnly() {
+  return new Date().toISOString().split('T')[0];
+}
+
 // ================= CARGAR DATOS DESDE GOOGLE SHEETS =================
 async function loadData() {
   if(dataLoaded) return;
   
   try {
-    // Cargar usuarios
+    // Cargar usuarios con secrets desde Google Sheets
     const usersResponse = await fetch(SCRIPT_URL + '?action=getUsers');
+    if(!usersResponse.ok) throw new Error('Error al cargar usuarios');
+    
     const savedUsers = await usersResponse.json();
     
     savedUsers.forEach(saved => {
@@ -227,11 +264,13 @@ async function loadData() {
     
     // Cargar registros
     const recordsResponse = await fetch(SCRIPT_URL + '?action=getRecords');
+    if(!recordsResponse.ok) throw new Error('Error al cargar registros');
+    
     records = await recordsResponse.json();
     
     console.log('✅ Datos cargados desde Google Sheets');
   } catch(error) {
-    console.log('ℹ️ Iniciando desde cero');
+    console.error('⚠️ Error al cargar datos:', error);
   }
   
   dataLoaded = true;
@@ -248,14 +287,18 @@ async function saveUser(userId, secret) {
       secret: secret
     }));
     
-    await fetch(SCRIPT_URL, {
+    const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: formData
     });
     
+    if(!response.ok) throw new Error('Error en la respuesta del servidor');
+    
     console.log('✅ Usuario guardado en Google Sheets');
+    return true;
   } catch(error) {
-    console.error('Error al guardar usuario');
+    console.error('❌ Error al guardar usuario:', error);
+    return false;
   }
 }
 
@@ -265,18 +308,27 @@ async function saveRecord(record) {
     formData.append('action', 'saveRecord');
     formData.append('data', JSON.stringify(record));
     
-    await fetch(SCRIPT_URL, {
+    const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: formData
     });
     
+    if(!response.ok) throw new Error('Error en la respuesta del servidor');
+    
     console.log('✅ Registro guardado en Google Sheets');
+    return true;
   } catch(error) {
-    console.error('Error al guardar registro');
+    console.error('❌ Error al guardar registro:', error);
+    return false;
   }
 }
 
-window.addEventListener('load', loadData);
+// ================= INICIALIZACIÓN =================
+window.addEventListener('load', async () => {
+  await loadData();
+  document.getElementById("loadingScreen").classList.add("hidden");
+  showScreen("loginScreen");
+});
 
 // ================= FUNCIONES TOTP =================
 function generateSecret() {
@@ -304,8 +356,12 @@ function base32Decode(secret) {
 }
 
 function generateTOTP(secret) {
+  return generateTOTPAt(secret, Date.now());
+}
+
+function generateTOTPAt(secret, timestamp) {
   const key = base32Decode(secret);
-  const epoch = Math.floor(Date.now() / 1000);
+  const epoch = Math.floor(timestamp / 1000);
   const time = Math.floor(epoch / 30);
   const timeHex = time.toString(16).padStart(16, '0');
   const timeBytes = new Uint8Array(8);
@@ -325,10 +381,31 @@ function generateTOTP(secret) {
   return otp;
 }
 
+function verifyTOTPWithTolerance(secret, inputCode) {
+  const now = Date.now();
+  // Validar ventana actual y ±30 segundos (±1 período)
+  for (let i = -1; i <= 1; i++) {
+    if (generateTOTPAt(secret, now + i * 30000) === inputCode) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ================= VALIDACIÓN DE INPUTS =================
+function validateSetupCode() {
+  const code = setupCodeInput.value;
+  setupVerifyBtn.disabled = code.length !== 6;
+}
+
+function validateVerifyCode() {
+  const code = codeInput.value;
+  verifyBtn.disabled = code.length !== 6;
+}
+
 // ================= VERIFICAR USUARIO =================
-async function checkUser() {
-  await loadData();
-  const user = users.find(u => u.username === username.value);
+function checkUser() {
+  const user = users.find(u => u.username === username.value.toLowerCase().trim());
   if(!user) return alert("❌ Usuario no encontrado");
   currentUser = user;
 
@@ -355,17 +432,23 @@ function showSetupScreen() {
     height: 200
   });
   
+  setupCodeInput.value = '';
+  setupVerifyBtn.disabled = true;
   showScreen("setupScreen");
 }
 
 async function completeSetup() {
   const inputCode = setupCodeInput.value;
-  const validCode = generateTOTP(currentUser.tempSecret);
   
-  if(inputCode === validCode) {
+  if(verifyTOTPWithTolerance(currentUser.tempSecret, inputCode)) {
     currentUser.secret = currentUser.tempSecret;
     delete currentUser.tempSecret;
-    await saveUser(currentUser.id, currentUser.secret);
+    
+    const saved = await saveUser(currentUser.id, currentUser.secret);
+    if(!saved) {
+      alert("⚠️ Configuración guardada localmente. Revisa la conexión con el servidor.");
+    }
+    
     alert("✅ Configuración completada exitosamente");
     currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
   } else {
@@ -376,9 +459,8 @@ async function completeSetup() {
 // ================= VERIFICAR CÓDIGO =================
 function verifyCode() {
   const inputCode = codeInput.value;
-  const validCode = generateTOTP(currentUser.secret);
   
-  if(inputCode === validCode) {
+  if(verifyTOTPWithTolerance(currentUser.secret, inputCode)) {
     currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
   } else {
     alert("❌ Código incorrecto");
@@ -387,48 +469,81 @@ function verifyCode() {
 
 // ================= REGISTRAR ASISTENCIA =================
 async function recordAttendance(type) {
-  const today = new Date().toLocaleDateString('es-GT');
-  const todayRecords = records.filter(r => r.userId === currentUser.id && r.timestamp.startsWith(today));
-  const last = todayRecords.slice(-1)[0];
+  // Deshabilitar todos los botones para evitar doble click
+  const buttons = document.querySelectorAll("button");
+  buttons.forEach(b => b.disabled = true);
   
-  if(type === "salida" && !last) return alert("❌ No puedes marcar salida sin entrada");
-  if(last && last.type === type) return alert("⚠️ Ya marcaste " + type + " hoy");
-  
-  const newRecord = {
-    id: records.length + 1,
-    userId: currentUser.id,
-    name: currentUser.name,
-    type: type,
-    timestamp: new Date().toLocaleString('es-GT')
-  };
-  
-  records.push(newRecord);
-  await saveRecord(newRecord);
-  alert("✅ " + type.toUpperCase() + " registrada");
-  showEmployeeScreen();
+  try {
+    const today = getTodayDateOnly();
+    const todayRecords = records.filter(r => r.userId === currentUser.id && getDateOnly(r.timestamp) === today);
+    
+    // Validación: no puede marcar salida sin entrada
+    if(type === "salida" && todayRecords.length === 0) {
+      alert("❌ No puedes marcar salida sin haber marcado entrada");
+      return;
+    }
+    
+    // Validación: no marcar el mismo tipo consecutivamente
+    const last = todayRecords.slice(-1)[0];
+    if(last && last.type === type) {
+      alert(`⚠️ Ya marcaste ${type} como último registro. Debes marcar ${type === 'entrada' ? 'salida' : 'entrada'} primero.`);
+      return;
+    }
+    
+    // ID único con timestamp + aleatoriedad
+    const newRecord = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      userId: currentUser.id,
+      name: currentUser.name,
+      type: type,
+      timestamp: getISODate()
+    };
+    
+    records.push(newRecord);
+    
+    const saved = await saveRecord(newRecord);
+    if(!saved) {
+      alert(`⚠️ ${type.toUpperCase()} registrada localmente. Revisa la conexión con el servidor.`);
+    } else {
+      alert(`✅ ${type.toUpperCase()} registrada correctamente`);
+    }
+    
+    showEmployeeScreen();
+  } finally {
+    // Re-habilitar botones
+    buttons.forEach(b => b.disabled = false);
+  }
 }
 
 // ================= PANTALLAS =================
 function showEmployeeScreen() {
   employeeName.textContent = currentUser.name;
-  const today = new Date().toLocaleDateString('es-GT');
-  employeeRecords.innerHTML = records
-    .filter(r => r.userId === currentUser.id && r.timestamp.startsWith(today))
+  const today = getTodayDateOnly();
+  const todayRecords = records.filter(r => r.userId === currentUser.id && getDateOnly(r.timestamp) === today);
+  
+  employeeRecords.innerHTML = todayRecords
+    .slice()
     .reverse()
     .map(r => `
       <div class="card">
         <strong>${r.type.toUpperCase()}</strong>
         <span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type}</span>
-        <div>${r.timestamp}</div>
-      </div>`).join("") || "<p>No hay registros hoy</p>";
+        <div>${formatDateForDisplay(r.timestamp)}</div>
+      </div>`).join("") || "<p style='text-align:center;color:var(--muted);padding:20px'>No hay registros hoy</p>";
+  
   showScreen("employeeScreen");
 }
 
-async function showAdminScreen() {
-  await loadData();
+function showAdminScreen() {
   totalEmployees.textContent = users.filter(u => u.role === 'empleado').length;
   totalRecords.textContent = records.length;
-  currentDate.textContent = new Date().toLocaleDateString('es-GT');
+  
+  const today = new Date();
+  currentDate.textContent = today.toLocaleDateString('es-GT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 
   filterUser.innerHTML = `<option value="">Todos los empleados</option>` +
     users.filter(u => u.role === 'empleado')
@@ -447,9 +562,7 @@ function renderAdminRecords() {
 
   if(userId) filtered = filtered.filter(r => r.userId == userId);
   if(date) {
-    const selectedDate = new Date(date + 'T00:00:00');
-    const dateStr = selectedDate.toLocaleDateString('es-GT');
-    filtered = filtered.filter(r => r.timestamp.startsWith(dateStr));
+    filtered = filtered.filter(r => getDateOnly(r.timestamp) === date);
   }
 
   const filterText = userId || date ? ` (${filtered.length} de ${records.length})` : ` (${filtered.length} total)`;
@@ -461,14 +574,13 @@ function renderAdminRecords() {
         <td>${r.id}</td>
         <td>${r.name}</td>
         <td><span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type.toUpperCase()}</span></td>
-        <td>${r.timestamp}</td>
+        <td>${formatDateForDisplay(r.timestamp)}</td>
       </tr>
     `).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">Sin registros para mostrar</td></tr>`;
 }
 
 function filterToday() {
-  const today = new Date();
-  filterDate.value = today.toISOString().split('T')[0];
+  filterDate.value = getTodayDateOnly();
   renderAdminRecords();
 }
 
@@ -503,30 +615,30 @@ function exportCSV() {
 
   if(userId) filtered = filtered.filter(r => r.userId == userId);
   if(date) {
-    const selectedDate = new Date(date + 'T00:00:00');
-    const dateStr = selectedDate.toLocaleDateString('es-GT');
-    filtered = filtered.filter(r => r.timestamp.startsWith(dateStr));
+    filtered = filtered.filter(r => getDateOnly(r.timestamp) === date);
   }
 
   let csv = 'ID,Nombre,Tipo,Fecha y Hora\n';
   filtered.forEach(r => {
-    csv += `${r.id},${r.name},${r.type},${r.timestamp}\n`;
+    csv += `${r.id},"${r.name}",${r.type},"${formatDateForDisplay(r.timestamp)}"\n`;
   });
 
-  const blob = new Blob([csv], {type: 'text/csv'});
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   const fileName = userId || date ? 
-    `asistencias_filtradas_${new Date().toISOString().split('T')[0]}.csv` :
-    `asistencias_completas_${new Date().toISOString().split('T')[0]}.csv`;
+    `asistencias_filtradas_${getTodayDateOnly()}.csv` :
+    `asistencias_completas_${getTodayDateOnly()}.csv`;
   a.download = fileName;
   a.click();
+  window.URL.revokeObjectURL(url);
 
   alert(`✅ ${filtered.length} registros exportados a CSV`);
 }
 </script>
 </body>
 </html>
+
 
 
