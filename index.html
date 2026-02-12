@@ -1,644 +1,1921 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COMCESA - Control de Asistencia</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsSHA/3.2.0/sha.js"></script>
-<style>
-:root {
---primary:#0B2A4A;--secondary:#1F4E79;--success:#2E7D32;
---danger:#C62828;--bg:#F4F6F8;--card:#fff;
---text:#1F2937;--muted:#6B7280;--border:#E5E7EB;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Segoe UI",Arial;background:var(--bg);padding:30px}
-.container{max-width:480px;margin:40px auto;background:var(--card);
-border-radius:6px;border:1px solid var(--border);padding:35px}
-.container-wide{max-width:1200px}
-.logo{text-align:center;margin-bottom:25px}
-.logo img{height:55px}
-h1{font-size:24px;color:var(--primary);text-align:center}
-.subtitle{text-align:center;color:var(--muted);margin-bottom:25px;font-size:14px}
-.input-group{margin-bottom:18px}
-label{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
-input,select{width:100%;padding:11px;border:1px solid var(--border);border-radius:4px}
-.btn{width:100%;padding:12px;font-weight:600;border:none;border-radius:4px;cursor:pointer;transition:opacity 0.2s}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-secondary{background:#E5E7EB;margin-top:10px}
-.btn-success{background:var(--success);color:#fff}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-small{width:auto;padding:8px 16px}
-.hidden{display:none}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.card{background:#F9FAFB;border:1px solid var(--border);padding:15px;border-radius:4px;margin-bottom:10px}
-.badge{padding:4px 10px;font-size:11px;border-radius:20px;color:#fff}
-.badge-entrada{background:var(--success)}
-.badge-salida{background:var(--danger)}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
-.stat-card{background:#fff;border:1px solid var(--border);padding:20px;border-radius:6px;text-align:center}
-.stat-number{font-size:28px;font-weight:bold;color:var(--primary)}
-table{width:100%;border-collapse:collapse}
-th{background:var(--primary);color:#fff;padding:12px}
-td{padding:12px;border-bottom:1px solid var(--border)}
-.alert{padding:12px;border-radius:4px;margin-bottom:15px;font-size:14px}
-.alert-info{background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD}
-.alert-warning{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D}
-.alert-danger{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
-.qr-container{text-align:center;padding:20px;background:#fff;border:2px dashed var(--border);border-radius:8px;margin:20px 0}
-#qrcode{display:inline-block;padding:15px;background:#fff}
-.secret-key{background:#F3F4F6;padding:10px;border-radius:4px;font-family:monospace;font-size:14px;text-align:center;margin:10px 0;word-break:break-all}
-.setup-steps{background:#F9FAFB;padding:15px;border-radius:4px;margin:15px 0}
-.setup-steps ol{margin-left:20px}
-.setup-steps li{margin:8px 0;font-size:14px}
-.loading{text-align:center;padding:20px;color:var(--muted)}
-.spinner{border:3px solid var(--border);border-top:3px solid var(--primary);border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-@media(max-width:768px){.grid-2,.stats{grid-template-columns:1fr}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMCESA - Sistema de Gestion Empresarial</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha1/0.6.0/sha1.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #003D7A;
+            --primary-light: #0055A5;
+            --secondary: #6C757D;
+            --success: #28A745;
+            --danger: #DC3545;
+            --warning: #FFC107;
+            --light-bg: #F8F9FA;
+            --white: #FFFFFF;
+            --text-dark: #212529;
+            --text-muted: #6C757D;
+            --border: #DEE2E6;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #F5F6F8;
+            color: var(--text-dark);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ========== HEADER ========== */
+        
+        .header {
+            background: var(--white);
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .header-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .logo-section img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .info-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .info-card {
+            text-align: right;
+        }
+
+        .info-card h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .info-card .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        /* ========== LOGIN ========== */
+        
+        .login-screen {
+            max-width: 440px;
+            margin: 80px auto;
+        }
+
+        .login-card {
+            background: var(--white);
+            padding: 40px;
+            border: 1px solid var(--border);
+        }
+
+        .login-card h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+        }
+
+        .login-card p {
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .qr-setup-screen {
+            max-width: 560px;
+            margin: 60px auto;
+        }
+
+        .qr-setup-card {
+            background: var(--white);
+            padding: 40px;
+            border: 1px solid var(--border);
+        }
+
+        .qr-code-container {
+            background: var(--white);
+            padding: 24px;
+            border: 2px solid var(--border);
+            margin: 24px 0;
+            display: inline-block;
+        }
+
+        .setup-steps {
+            background: var(--light-bg);
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .setup-steps h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-dark);
+        }
+
+        .setup-steps ol {
+            margin-left: 20px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .setup-steps li {
+            margin-bottom: 8px;
+        }
+
+        .secret-key-display {
+            background: #FFF9E6;
+            border: 1px solid #FFE082;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-align: center;
+        }
+
+        /* ========== FORMS ========== */
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--text-dark);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group-full {
+            grid-column: 1 / -1;
+        }
+
+        /* ========== BUTTONS ========== */
+        
+        .btn {
+            padding: 11px 24px;
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--primary-light);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: #F8F9FA;
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #C82333;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .btn-large {
+            padding: 14px 32px;
+            font-size: 15px;
+        }
+
+        /* ========== ALERTS ========== */
+        
+        .alert {
+            padding: 12px 16px;
+            margin: 16px 0;
+            display: none;
+            font-size: 14px;
+            border-left: 3px solid;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #D4EDDA;
+            border-color: var(--success);
+            color: #155724;
+        }
+
+        .alert-danger {
+            background: #F8D7DA;
+            border-color: var(--danger);
+            color: #721C24;
+        }
+
+        .alert-warning {
+            background: #FFF3CD;
+            border-color: var(--warning);
+            color: #856404;
+        }
+
+        /* ========== USER INFO ========== */
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .user-details h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .user-details p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            padding: 8px 20px;
+            background: var(--white);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            font-weight: 500;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        /* ========== NAVIGATION ========== */
+        
+        .nav-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .nav-card {
+            background: var(--white);
+            padding: 24px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .nav-card:hover {
+            border-color: var(--primary);
+        }
+
+        .nav-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-dark);
+        }
+
+        .nav-card p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* ========== SECTIONS ========== */
+        
+        .content-section {
+            background: var(--white);
+            padding: 32px;
+            border: 1px solid var(--border);
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        /* ========== ATTENDANCE CLOCK ========== */
+        
+        .attendance-clock {
+            text-align: center;
+            padding: 40px;
+            background: var(--light-bg);
+            margin-bottom: 32px;
+        }
+
+        .clock-time {
+            font-size: 48px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .clock-date {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .clock-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        /* ========== TABLES ========== */
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .data-table th {
+            background: var(--light-bg);
+            color: var(--text-dark);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table tr:hover {
+            background: #FAFBFC;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-ontime {
+            background: #D4EDDA;
+            color: #155724;
+        }
+
+        .status-late {
+            background: #F8D7DA;
+            color: #721C24;
+        }
+
+        .status-early {
+            background: #FFF3CD;
+            color: #856404;
+        }
+
+        .status-pendiente {
+            background: #FFF3CD;
+            color: #856404;
+        }
+
+        .status-aprobado {
+            background: #D4EDDA;
+            color: #155724;
+        }
+
+        .status-rechazado {
+            background: #F8D7DA;
+            color: #721C24;
+        }
+
+        /* ========== FILTERS ========== */
+        
+        .filters {
+            background: var(--light-bg);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .filters h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        /* ========== STATS ========== */
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        /* ========== IGSS ========== */
+        
+        .igss-appointments {
+            display: grid;
+            gap: 16px;
+        }
+
+        .appointment-card {
+            background: var(--light-bg);
+            padding: 20px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .appointment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .appointment-type {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .appointment-date {
+            background: var(--primary);
+            color: var(--white);
+            padding: 4px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .appointment-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        /* ========== LOADING ========== */
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ========== RESPONSIVE ========== */
+        
+        @media (max-width: 768px) {
+            .header-content {
+                grid-template-columns: 1fr;
+            }
+
+            .info-section {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .clock-time {
+                font-size: 36px;
+            }
+
+            .clock-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-<!-- LOADING INICIAL -->
-<div id="loadingScreen" class="container">
-<div class="spinner"></div>
-<p class="loading">Cargando datos del sistema...</p>
-</div>
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Procesando...</p>
+        </div>
+    </div>
 
-<!-- LOGIN -->
-<div id="loginScreen" class="container hidden">
-<div class="logo">
-<img src="https://tse4.mm.bing.net/th/id/OIP.FWDv-1kVSpV5Dz_OMAu4IgHaBo?rs=1">
-</div>
-<h1>Control de Asistencia</h1>
-<p class="subtitle">Ingresa tu usuario</p>
-<div class="input-group">
-<label>Usuario</label>
-<input id="username" autocomplete="username">
-</div>
-<button class="btn btn-primary" onclick="checkUser()">Continuar</button>
-</div>
+    <div class="container">
+        <!-- ========== LOGIN STEP 1 ========== -->
+        <div id="loginStep1">
+            <div class="login-screen">
+                <div class="login-card">
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <img src="https://comcesa.net/wp-content/uploads/2022/08/comcesa-logotipo-2022.png" alt="COMCESA" style="max-width: 100%; height: auto;">
+                    </div>
+                    <h2>Acceso al Sistema</h2>
+                    <p>Ingrese su usuario para continuar</p>
+                    
+                    <div id="alertStep1" class="alert"></div>
+                    
+                    <div class="form-group">
+                        <input type="text" id="usernameInput" placeholder="usuario">
+                    </div>
+                    <button class="btn btn-full" onclick="checkUser()">Continuar</button>
+                </div>
+            </div>
+        </div>
 
-<!-- CONFIGURACIÓN INICIAL -->
-<div id="setupScreen" class="container hidden">
-<h1>Configuración Inicial</h1>
-<p class="subtitle">Hola, <span id="setupUserName"></span></p>
-<div class="alert alert-warning">
-⚠️ Es tu primera vez. Configura Google Authenticator
-</div>
-<div class="setup-steps">
-<strong>Sigue estos pasos:</strong>
-<ol>
-<li>Descarga <strong>Google Authenticator</strong> en tu celular (Play Store o App Store)</li>
-<li>Abre la app y toca el botón <strong>+</strong></li>
-<li>Selecciona <strong>"Escanear código QR"</strong></li>
-<li>Escanea el código QR de abajo</li>
-</ol>
-</div>
-<div class="qr-container">
-<div id="qrcode"></div>
-<p style="margin-top:10px;color:var(--muted);font-size:13px">
-O ingresa manualmente esta clave:
-</p>
-<div class="secret-key" id="secretKey"></div>
-</div>
-<div class="input-group">
-<label>Ingresa el código de 6 dígitos que aparece en tu app</label>
-<input id="setupCodeInput" placeholder="000000" maxlength="6" type="tel" oninput="validateSetupCode()">
-</div>
-<button id="setupVerifyBtn" class="btn btn-primary" onclick="completeSetup()" disabled>Verificar y Continuar</button>
-<button class="btn btn-secondary" onclick="logout()">Cancelar</button>
-</div>
+        <!-- ========== QR SETUP ========== -->
+        <div id="qrSetupScreen" class="hidden">
+            <div class="qr-setup-screen">
+                <div class="qr-setup-card">
+                    <h2 style="margin-bottom: 8px;">Configuracion de Seguridad</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 14px;">
+                        Primera configuracion del sistema de autenticacion
+                    </p>
 
-<!-- VERIFICACIÓN -->
-<div id="verificationScreen" class="container hidden">
-<h1>Verificación</h1>
-<p class="subtitle">Hola, <span id="userName"></span></p>
-<div class="alert alert-info">
-📱 Abre <strong>Google Authenticator</strong> en tu celular
-</div>
-<div class="input-group">
-<label>Ingresa el código de 6 dígitos de tu app</label>
-<input id="codeInput" placeholder="000000" maxlength="6" type="tel" oninput="validateVerifyCode()">
-</div>
-<button id="verifyBtn" class="btn btn-primary" onclick="verifyCode()" disabled>Verificar</button>
-<button class="btn btn-secondary" onclick="logout()">Cancelar</button>
-<div style="margin-top:15px;text-align:center;color:var(--muted);font-size:12px">
-El código cambia cada 30 segundos
-</div>
-</div>
+                    <div class="setup-steps">
+                        <h3>Instrucciones</h3>
+                        <ol>
+                            <li>Descargue Google Authenticator en su dispositivo movil</li>
+                            <li>Abra la aplicacion y presione el boton de agregar cuenta</li>
+                            <li>Escanee el codigo QR que aparece a continuacion</li>
+                        </ol>
+                    </div>
 
-<!-- EMPLEADO -->
-<div id="employeeScreen" class="container hidden">
-<h1>Bienvenido, <span id="employeeName"></span></h1>
-<div class="grid-2">
-<button class="btn btn-success" onclick="recordAttendance('entrada')">Registrar Entrada</button>
-<button class="btn btn-danger" onclick="recordAttendance('salida')">Registrar Salida</button>
-</div>
-<h3 style="margin:20px 0">Mis registros de hoy</h3>
-<div id="employeeRecords"></div>
-<button class="btn btn-secondary" onclick="logout()">Cerrar sesión</button>
-</div>
+                    <div style="text-align: center;">
+                        <div class="qr-code-container">
+                            <div id="qrcode"></div>
+                        </div>
+                    </div>
 
-<!-- ADMIN -->
-<div id="adminScreen" class="container container-wide hidden">
-<h1>Panel Administrador</h1>
-<div class="stats">
-<div class="stat-card"><div class="stat-number" id="totalEmployees">0</div>Total Empleados</div>
-<div class="stat-card"><div class="stat-number" id="totalRecords">0</div>Registros</div>
-<div class="stat-card"><div class="stat-number" id="currentDate"></div>Fecha</div>
-</div>
+                    <div style="background: #FFF9E6; padding: 20px; margin: 24px 0; border: 1px solid #FFE082;">
+                        <p style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">CODIGO DE RESPALDO</p>
+                        <div class="secret-key-display" id="secretKeyDisplay">
+                            XXXXXX
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 12px;">
+                            Guarde este codigo en un lugar seguro para recuperacion de acceso
+                        </p>
+                    </div>
 
-<div class="card" style="margin:20px 0">
-<h3 style="margin-bottom:15px;color:var(--primary)">🔍 Filtrar Historial</h3>
-<div class="grid-2">
-<div class="input-group" style="margin:0">
-<label>Empleado</label>
-<select id="filterUser" onchange="renderAdminRecords()">
-<option value="">Todos los empleados</option>
-</select>
-</div>
-<div class="input-group" style="margin:0">
-<label>Fecha</label>
-<input type="date" id="filterDate" onchange="renderAdminRecords()">
-</div>
-</div>
-<div style="margin-top:15px;display:flex;gap:10px">
-<button class="btn btn-secondary" onclick="filterToday()" style="width:auto;padding:8px 16px">📅 Hoy</button>
-<button class="btn btn-secondary" onclick="filterYesterday()" style="width:auto;padding:8px 16px">⏮️ Ayer</button>
-<button class="btn btn-secondary" onclick="clearFilters()" style="width:auto;padding:8px 16px">🔄 Limpiar Filtros</button>
-</div>
-</div>
+                    <div class="form-group">
+                        <label>Ingrese el codigo de 6 digitos de la aplicacion</label>
+                        <input type="text" id="setupVerificationCode" placeholder="000000" maxlength="6" style="text-align: center; font-size: 20px; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                    </div>
 
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-<h2 style="color:var(--primary)">Historial de Asistencias <span id="recordCount" style="font-size:16px;color:var(--muted)"></span></h2>
-<div>
-<button class="btn btn-primary" onclick="exportCSV()" style="margin:0;width:auto;padding:8px 16px">📥 Exportar CSV</button>
-</div>
-</div>
+                    <div id="alertQrSetup" class="alert"></div>
 
-<table>
-<thead><tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Fecha y Hora</th></tr></thead>
-<tbody id="recordsBody"></tbody>
-</table>
-<button class="btn btn-secondary" onclick="logout()" style="margin-top:20px">Cerrar sesión</button>
-</div>
+                    <button class="btn btn-full" onclick="completeSetup()">Completar Configuracion</button>
+                </div>
+            </div>
+        </div>
 
-<script>
-// ================= CONFIGURACIÓN GOOGLE SHEETS =================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxEHbHkZ5ncT0PU5F2sBYSaLzd_ebZUaWlEySBnww7TaYxIMVtBdWuNKOE0tX9wWlRK/exec';
+        <!-- ========== LOGIN STEP 2 ========== -->
+        <div id="loginStep2" class="hidden">
+            <div class="login-screen">
+                <div class="login-card">
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <img src="https://comcesa.net/wp-content/uploads/2022/08/comcesa-logotipo-2022.png" alt="COMCESA" style="max-width: 100%; height: auto;">
+                    </div>
+                    <h2>Verificacion de Acceso</h2>
+                    <p>Ingrese el codigo de autenticacion</p>
+                    
+                    <div id="alertStep2" class="alert"></div>
+                    
+                    <div style="text-align: center; margin-bottom: 24px; padding: 16px; background: var(--light-bg);">
+                        <p style="color: var(--text-muted); margin-bottom: 4px; font-size: 12px;">USUARIO</p>
+                        <p style="font-size: 16px; font-weight: 600; color: var(--text-dark);" id="displayUsername"></p>
+                    </div>
 
-// ================= USUARIOS =================
-const users = [
-{ id:1, username:'josue.rodriguez', name:'Josue Rodriguez', role:'empleado', secret:null },
-{ id:2, username:'yanira.lopez', name:'Yanira Lopez', role:'empleado', secret:null },
-{ id:3, username:'luz.deleon', name:'Luz De Leon', role:'empleado', secret:null },
-{ id:4, username:'rosa.gomez', name:'Rosa Gomez', role:'empleado', secret:null },
-{ id:5, username:'benjamin.perez', name:'Benjamin Perez', role:'empleado', secret:null },
-{ id:6, username:'dulce.guzman', name:'Dulce Guzman', role:'empleado', secret:null },
-{ id:7, username:'roniel.chacon', name:'Roniel Chacon', role:'empleado', secret:null },
-{ id:8, username:'william.palacios', name:'William Palacios', role:'empleado', secret:null },
-{ id:9, username:'maria.rosales', name:'Maria Rosales', role:'empleado', secret:null },
-{ id:10, username:'erick.garcia', name:'Erick Garcia', role:'empleado', secret:null },
-{ id:11, username:'hever.rian', name:'Hever Rian', role:'empleado', secret:null },
-{ id:12, username:'gabriela.vasquez', name:'Gabriela Vasquez', role:'empleado', secret:null },
-{ id:13, username:'jorge.mendez', name:'Jorge Mendez', role:'empleado', secret:null },
-{ id:14, username:'elias.ixcoy', name:'Elias Ixcoy', role:'empleado', secret:null },
-{ id:15, username:'william.camey', name:'William Camey', role:'empleado', secret:null },
-{ id:16, username:'rodolfo.xuya', name:'Rodolfo Xuya', role:'empleado', secret:null },
-{ id:17, username:'bethzabe.delaroca', name:'Bethzabe de la Roca', role:'empleado', secret:null },
-{ id:18, username:'teresa.aifan', name:'Teresa de Jesus Aifan', role:'empleado', secret:null },
-{ id:19, username:'benigno.deleon', name:'Benigno De Leon Vasquez', role:'empleado', secret:null },
-{ id:20, username:'juan.rodriguez', name:'Juan Jose Rodriguez', role:'empleado', secret:null },
-{ id:21, username:'jose.avila', name:'Jose Avila', role:'empleado', secret:null },
-{ id:22, username:'christian.valencia', name:'Christian Valencia', role:'empleado', secret:null },
-{ id:23, username:'sergio.garcia', name:'Sergio Garcia', role:'empleado', secret:null },
-{ id:99, username:'sys.ctrl_9XQ', name:'Administrador del Sistema', role:'admin', secret:null }
-];
+                    <div class="form-group">
+                        <label>Codigo de 6 digitos</label>
+                        <input type="text" id="loginCode" placeholder="000000" maxlength="6" style="text-align: center; font-size: 20px; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                    </div>
+                    
+                    <button class="btn btn-full" onclick="verifyLogin()">Ingresar</button>
+                    <button class="btn btn-secondary btn-full" onclick="backToUsername()" style="margin-top: 12px;">Cambiar Usuario</button>
+                </div>
+            </div>
+        </div>
 
-let records = [];
-let currentUser = null;
-let dataLoaded = false;
+        <!-- ========== MAIN SYSTEM ========== -->
+        <div id="mainSystem" class="hidden">
+            <div class="header">
+                <div class="header-content">
+                    <div class="logo-section">
+                        <img src="https://comcesa.net/wp-content/uploads/2022/08/comcesa-logotipo-2022.png" alt="COMCESA">
+                    </div>
+                    <div class="info-section">
+                        <div class="info-card">
+                            <h3>Fecha</h3>
+                            <div class="value" id="currentDate">--</div>
+                        </div>
+                        <div class="info-card">
+                            <h3>Hora</h3>
+                            <div class="value" id="currentTime">--:--:--</div>
+                        </div>
+                        <div class="info-card">
+                            <h3>Temperatura</h3>
+                            <div class="value"><span id="temperature">24</span>°C</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-// ================= UTILIDADES DE FECHA (ISO) =================
-function getISODate() {
-  return new Date().toISOString();
-}
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">--</div>
+                <div class="user-details">
+                    <h3 id="userName">Usuario</h3>
+                    <p id="userRole">Cargo</p>
+                </div>
+                <button class="logout-btn" onclick="logout()">Cerrar Sesion</button>
+            </div>
 
-function formatDateForDisplay(isoString) {
-  const date = new Date(isoString);
-  return date.toLocaleString('es-GT', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-}
+            <div id="navigationCards" class="nav-cards">
+                <div class="nav-card" onclick="showSection('attendance')">
+                    <h3>Control de Asistencia</h3>
+                    <p>Registro de entrada y salida</p>
+                </div>
+                <div class="nav-card" onclick="showSection('vacations')">
+                    <h3>Solicitud de Vacaciones</h3>
+                    <p>Gestion de dias de descanso</p>
+                </div>
+                <div class="nav-card" onclick="showSection('igss')">
+                    <h3>Informacion IGSS</h3>
+                    <p>Registro de citas medicas</p>
+                </div>
+            </div>
 
-function getDateOnly(isoString) {
-  return isoString.split('T')[0];
-}
+            <div id="adminNav" class="nav-cards hidden">
+                <div class="nav-card" onclick="showSection('adminAttendance')">
+                    <h3>Panel de Asistencia</h3>
+                    <p>Monitoreo de empleados</p>
+                </div>
+                <div class="nav-card" onclick="showSection('adminVacations')">
+                    <h3>Gestion de Vacaciones</h3>
+                    <p>Aprobacion de solicitudes</p>
+                </div>
+            </div>
 
-function getTodayDateOnly() {
-  return new Date().toISOString().split('T')[0];
-}
+            <!-- ========== ATTENDANCE SECTION ========== -->
+            <div id="attendanceSection" class="content-section">
+                <div class="section-header">
+                    <h2>Control de Asistencia</h2>
+                    <button class="btn btn-secondary" onclick="showNavigation()">Volver</button>
+                </div>
 
-// ================= CARGAR DATOS DESDE GOOGLE SHEETS =================
-async function loadData() {
-  if(dataLoaded) return;
-  
-  try {
-    // Cargar usuarios con secrets desde Google Sheets
-    const usersResponse = await fetch(SCRIPT_URL + '?action=getUsers');
-    if(!usersResponse.ok) throw new Error('Error al cargar usuarios');
-    
-    const savedUsers = await usersResponse.json();
-    
-    savedUsers.forEach(saved => {
-      const user = users.find(u => u.id === saved.id);
-      if(user && saved.secret) user.secret = saved.secret;
-    });
-    
-    // Cargar registros
-    const recordsResponse = await fetch(SCRIPT_URL + '?action=getRecords');
-    if(!recordsResponse.ok) throw new Error('Error al cargar registros');
-    
-    records = await recordsResponse.json();
-    
-    console.log('✅ Datos cargados desde Google Sheets');
-  } catch(error) {
-    console.error('⚠️ Error al cargar datos:', error);
-  }
-  
-  dataLoaded = true;
-}
+                <div class="attendance-clock">
+                    <div class="clock-time" id="clockDisplay">00:00:00</div>
+                    <div class="clock-date" id="attendanceDate">--</div>
+                    
+                    <div id="attendanceAlert" class="alert"></div>
 
-async function saveUser(userId, secret) {
-  try {
-    const user = users.find(u => u.id === userId);
-    const formData = new FormData();
-    formData.append('action', 'saveUser');
-    formData.append('data', JSON.stringify({
-      id: userId,
-      username: user.username,
-      secret: secret
-    }));
-    
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if(!response.ok) throw new Error('Error en la respuesta del servidor');
-    
-    console.log('✅ Usuario guardado en Google Sheets');
-    return true;
-  } catch(error) {
-    console.error('❌ Error al guardar usuario:', error);
-    return false;
-  }
-}
+                    <div class="clock-actions">
+                        <button class="btn btn-success btn-large" onclick="clockIn()">Marcar Entrada</button>
+                        <button class="btn btn-danger btn-large" onclick="clockOut()">Marcar Salida</button>
+                    </div>
+                </div>
 
-async function saveRecord(record) {
-  try {
-    const formData = new FormData();
-    formData.append('action', 'saveRecord');
-    formData.append('data', JSON.stringify(record));
-    
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if(!response.ok) throw new Error('Error en la respuesta del servidor');
-    
-    console.log('✅ Registro guardado en Google Sheets');
-    return true;
-  } catch(error) {
-    console.error('❌ Error al guardar registro:', error);
-    return false;
-  }
-}
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Registro del Dia</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Hora Registrada</th>
+                            <th>Hora Esperada</th>
+                            <th>Estado</th>
+                            <th>Diferencia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="todayAttendance">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">
+                                Sin registros
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-// ================= INICIALIZACIÓN =================
-window.addEventListener('load', async () => {
-  await loadData();
-  document.getElementById("loadingScreen").classList.add("hidden");
-  showScreen("loginScreen");
-});
+            <!-- ========== VACATIONS SECTION ========== -->
+            <div id="vacationsSection" class="content-section">
+                <div class="section-header">
+                    <h2>Solicitud de Vacaciones</h2>
+                    <button class="btn btn-secondary" onclick="showNavigation()">Volver</button>
+                </div>
 
-// ================= FUNCIONES TOTP =================
-function generateSecret() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let secret = '';
-  for(let i = 0; i < 32; i++) {
-    secret += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return secret;
-}
+                <div id="vacationAlert" class="alert"></div>
 
-function base32Decode(secret) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = '';
-  for(let i = 0; i < secret.length; i++) {
-    const val = alphabet.indexOf(secret.charAt(i).toUpperCase());
-    if(val === -1) continue;
-    bits += val.toString(2).padStart(5, '0');
-  }
-  const bytes = [];
-  for(let i = 0; i + 8 <= bits.length; i += 8) {
-    bytes.push(parseInt(bits.substr(i, 8), 2));
-  }
-  return new Uint8Array(bytes);
-}
+                <form onsubmit="submitVacation(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Tipo de Solicitud</label>
+                            <select id="vacationType" required>
+                                <option value="">Seleccionar</option>
+                                <option value="1-dia">1 Dia</option>
+                                <option value="medio-dia">Medio Dia</option>
+                                <option value="semana">1 Semana</option>
+                                <option value="quincena">Quincena</option>
+                                <option value="mes">1 Mes</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Inicio</label>
+                            <input type="date" id="vacationStartDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Fin</label>
+                            <input type="date" id="vacationEndDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Total de Dias</label>
+                            <input type="number" id="vacationDays" readonly>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label>Motivo de la Solicitud</label>
+                            <textarea id="vacationReason" required></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Enviar Solicitud</button>
+                </form>
 
-function generateTOTP(secret) {
-  return generateTOTPAt(secret, Date.now());
-}
+                <h3 style="margin: 32px 0 16px 0; font-size: 16px; font-weight: 600;">Historial de Solicitudes</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha Solicitud</th>
+                            <th>Periodo</th>
+                            <th>Dias</th>
+                            <th>Estado</th>
+                            <th>Respuesta</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vacationHistory">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">
+                                Sin solicitudes
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-function generateTOTPAt(secret, timestamp) {
-  const key = base32Decode(secret);
-  const epoch = Math.floor(timestamp / 1000);
-  const time = Math.floor(epoch / 30);
-  const timeHex = time.toString(16).padStart(16, '0');
-  const timeBytes = new Uint8Array(8);
-  for(let i = 0; i < 8; i++) {
-    timeBytes[i] = parseInt(timeHex.substr(i * 2, 2), 16);
-  }
-  const shaObj = new jsSHA("SHA-1", "UINT8ARRAY");
-  shaObj.setHMACKey(key, "UINT8ARRAY");
-  shaObj.update(timeBytes);
-  const hmac = shaObj.getHMAC("UINT8ARRAY");
-  const offset = hmac[hmac.length - 1] & 0xf;
-  const binary = ((hmac[offset] & 0x7f) << 24) |
-                 ((hmac[offset + 1] & 0xff) << 16) |
-                 ((hmac[offset + 2] & 0xff) << 8) |
-                 (hmac[offset + 3] & 0xff);
-  const otp = (binary % 1000000).toString().padStart(6, '0');
-  return otp;
-}
+            <!-- ========== IGSS SECTION ========== -->
+            <div id="igssSection" class="content-section">
+                <div class="section-header">
+                    <h2>Informacion IGSS</h2>
+                    <button class="btn btn-secondary" onclick="showNavigation()">Volver</button>
+                </div>
 
-function verifyTOTPWithTolerance(secret, inputCode) {
-  const now = Date.now();
-  // Validar ventana actual y ±30 segundos (±1 período)
-  for (let i = -1; i <= 1; i++) {
-    if (generateTOTPAt(secret, now + i * 30000) === inputCode) {
-      return true;
-    }
-  }
-  return false;
-}
+                <div id="igssAlert" class="alert"></div>
 
-// ================= VALIDACIÓN DE INPUTS =================
-function validateSetupCode() {
-  const code = setupCodeInput.value;
-  setupVerifyBtn.disabled = code.length !== 6;
-}
+                <form onsubmit="submitIGSS(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Tipo de Tramite</label>
+                            <select id="igssType" required>
+                                <option value="">Seleccionar</option>
+                                <option value="consulta">Consulta Medica</option>
+                                <option value="cita-programada">Cita Programada</option>
+                                <option value="medicina">Recoger Medicina</option>
+                                <option value="tramites">Otros Tramites</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de la Cita</label>
+                            <input type="date" id="igssDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Hora de la Cita</label>
+                            <input type="time" id="igssTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Periferica / Lugar</label>
+                            <input type="text" id="igssLocation" required>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label>Numero de Constancia IGSS</label>
+                            <input type="text" id="igssConstancia">
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label>Observaciones</label>
+                            <textarea id="igssNotes"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Registrar Cita</button>
+                </form>
 
-function validateVerifyCode() {
-  const code = codeInput.value;
-  verifyBtn.disabled = code.length !== 6;
-}
+                <h3 style="margin: 32px 0 16px 0; font-size: 16px; font-weight: 600;">Citas Registradas</h3>
+                <div class="igss-appointments" id="igssAppointments">
+                    <p style="text-align: center; color: var(--text-muted); padding: 32px;">
+                        Cargando...
+                    </p>
+                </div>
+            </div>
 
-// ================= VERIFICAR USUARIO =================
-function checkUser() {
-  const user = users.find(u => u.username === username.value.toLowerCase().trim());
-  if(!user) return alert("❌ Usuario no encontrado");
-  currentUser = user;
+            <!-- ========== ADMIN ATTENDANCE ========== -->
+            <div id="adminAttendanceSection" class="content-section">
+                <div class="section-header">
+                    <h2>Panel de Asistencia</h2>
+                    <button class="btn btn-secondary" onclick="showNavigation()">Volver</button>
+                </div>
 
-  if(!user.secret) {
-    showSetupScreen();
-  } else {
-    userName.textContent = user.name;
-    showScreen("verificationScreen");
-  }
-}
+                <div class="filters">
+                    <h3>Filtros</h3>
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label>Empleado</label>
+                            <select id="filterEmployee">
+                                <option value="all">Todos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Periodo</label>
+                            <select id="filterPeriod">
+                                <option value="today">Hoy</option>
+                                <option value="yesterday">Ayer</option>
+                                <option value="week">Esta Semana</option>
+                                <option value="month">Este Mes</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="applyFilters()" style="margin-top: 16px;">Aplicar Filtros</button>
+                    <button class="btn btn-success" onclick="exportToExcel()" style="margin-top: 16px; margin-left: 12px;">Exportar</button>
+                </div>
 
-// ================= CONFIGURACIÓN =================
-function showSetupScreen() {
-  setupUserName.textContent = currentUser.name;
-  const secret = generateSecret();
-  currentUser.tempSecret = secret;
-  secretKey.textContent = secret;
-  
-  document.getElementById('qrcode').innerHTML = '';
-  const qrText = `otpauth://totp/COMCESA:${currentUser.username}?secret=${secret}&issuer=COMCESA`;
-  new QRCode(document.getElementById("qrcode"), {
-    text: qrText,
-    width: 200,
-    height: 200
-  });
-  
-  setupCodeInput.value = '';
-  setupVerifyBtn.disabled = true;
-  showScreen("setupScreen");
-}
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <p class="stat-label">Registros</p>
+                        <p class="stat-value" id="statTotal">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label">Llegadas Tarde</p>
+                        <p class="stat-value" style="color: var(--danger);" id="statLate">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label">Puntualidad</p>
+                        <p class="stat-value" style="color: var(--success);" id="statOnTime">100%</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label">Tiempo Acumulado</p>
+                        <p class="stat-value" style="font-size: 20px;" id="statTotalLate">0h 0m</p>
+                    </div>
+                </div>
 
-async function completeSetup() {
-  const inputCode = setupCodeInput.value;
-  
-  if(verifyTOTPWithTolerance(currentUser.tempSecret, inputCode)) {
-    currentUser.secret = currentUser.tempSecret;
-    delete currentUser.tempSecret;
-    
-    const saved = await saveUser(currentUser.id, currentUser.secret);
-    if(!saved) {
-      alert("⚠️ Configuración guardada localmente. Revisa la conexión con el servidor.");
-    }
-    
-    alert("✅ Configuración completada exitosamente");
-    currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
-  } else {
-    alert("❌ Código incorrecto. Verifica que sea el código actual de tu app.");
-  }
-}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Fecha</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th>Estado Entrada</th>
+                            <th>Estado Salida</th>
+                            <th>Diferencia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminAttendanceData">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                                Seleccione filtros
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-// ================= VERIFICAR CÓDIGO =================
-function verifyCode() {
-  const inputCode = codeInput.value;
-  
-  if(verifyTOTPWithTolerance(currentUser.secret, inputCode)) {
-    currentUser.role === "admin" ? showAdminScreen() : showEmployeeScreen();
-  } else {
-    alert("❌ Código incorrecto");
-  }
-}
+            <!-- ========== ADMIN VACATIONS ========== -->
+            <div id="adminVacationsSection" class="content-section">
+                <div class="section-header">
+                    <h2>Gestion de Vacaciones</h2>
+                    <button class="btn btn-secondary" onclick="showNavigation()">Volver</button>
+                </div>
 
-// ================= REGISTRAR ASISTENCIA =================
-async function recordAttendance(type) {
-  // Deshabilitar todos los botones para evitar doble click
-  const buttons = document.querySelectorAll("button");
-  buttons.forEach(b => b.disabled = true);
-  
-  try {
-    const today = getTodayDateOnly();
-    const todayRecords = records.filter(r => r.userId === currentUser.id && getDateOnly(r.timestamp) === today);
-    
-    // Validación: no puede marcar salida sin entrada
-    if(type === "salida" && todayRecords.length === 0) {
-      alert("❌ No puedes marcar salida sin haber marcado entrada");
-      return;
-    }
-    
-    // Validación: no marcar el mismo tipo consecutivamente
-    const last = todayRecords.slice(-1)[0];
-    if(last && last.type === type) {
-      alert(`⚠️ Ya marcaste ${type} como último registro. Debes marcar ${type === 'entrada' ? 'salida' : 'entrada'} primero.`);
-      return;
-    }
-    
-    // ID único con timestamp + aleatoriedad
-    const newRecord = {
-      id: Date.now() + Math.floor(Math.random() * 1000),
-      userId: currentUser.id,
-      name: currentUser.name,
-      type: type,
-      timestamp: getISODate()
-    };
-    
-    records.push(newRecord);
-    
-    const saved = await saveRecord(newRecord);
-    if(!saved) {
-      alert(`⚠️ ${type.toUpperCase()} registrada localmente. Revisa la conexión con el servidor.`);
-    } else {
-      alert(`✅ ${type.toUpperCase()} registrada correctamente`);
-    }
-    
-    showEmployeeScreen();
-  } finally {
-    // Re-habilitar botones
-    buttons.forEach(b => b.disabled = false);
-  }
-}
+                <div class="filters">
+                    <h3>Filtros</h3>
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label>Estado</label>
+                            <select id="vacationFilterStatus">
+                                <option value="all">Todos</option>
+                                <option value="pendiente">Pendientes</option>
+                                <option value="aprobado">Aprobadas</option>
+                                <option value="rechazado">Rechazadas</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Empleado</label>
+                            <select id="vacationFilterEmployee">
+                                <option value="all">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="applyVacationFilters()" style="margin-top: 16px;">Aplicar Filtros</button>
+                </div>
 
-// ================= PANTALLAS =================
-function showEmployeeScreen() {
-  employeeName.textContent = currentUser.name;
-  const today = getTodayDateOnly();
-  const todayRecords = records.filter(r => r.userId === currentUser.id && getDateOnly(r.timestamp) === today);
-  
-  employeeRecords.innerHTML = todayRecords
-    .slice()
-    .reverse()
-    .map(r => `
-      <div class="card">
-        <strong>${r.type.toUpperCase()}</strong>
-        <span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type}</span>
-        <div>${formatDateForDisplay(r.timestamp)}</div>
-      </div>`).join("") || "<p style='text-align:center;color:var(--muted);padding:20px'>No hay registros hoy</p>";
-  
-  showScreen("employeeScreen");
-}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Fecha Solicitud</th>
+                            <th>Periodo</th>
+                            <th>Dias</th>
+                            <th>Motivo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminVacationData">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                                Cargando...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-function showAdminScreen() {
-  totalEmployees.textContent = users.filter(u => u.role === 'empleado').length;
-  totalRecords.textContent = records.length;
-  
-  const today = new Date();
-  currentDate.textContent = today.toLocaleDateString('es-GT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+    <script>
+        // ========== CONFIGURACION - PEGA AQUI TU URL ==========
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPYm1mZ-L0yFMRwG48fcWH98uyUAZjGRDZQRCAI2dqMbiMdQKgCxrr6QAZdWrFBjoJoA/exec';
+        
+        let currentUsername = '';
+        let currentUser = null;
+        let currentSection = 'navigation';
 
-  filterUser.innerHTML = `<option value="">Todos los empleados</option>` +
-    users.filter(u => u.role === 'empleado')
-      .map(u => `<option value="${u.id}">${u.name}</option>`).join("");
+        // ========== IMPLEMENTACION TOTP ==========
+        
+        class TOTP {
+            constructor(secret) {
+                this.secret = secret;
+            }
 
-  filterDate.value = '';
-  renderAdminRecords();
-  showScreen("adminScreen");
-}
+            base32Decode(base32) {
+                const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+                let bits = '';
+                
+                base32 = base32.replace(/=+$/, '').toUpperCase();
+                
+                for (let i = 0; i < base32.length; i++) {
+                    const val = alphabet.indexOf(base32.charAt(i));
+                    if (val === -1) continue;
+                    bits += val.toString(2).padStart(5, '0');
+                }
+                
+                const bytes = [];
+                for (let i = 0; i + 8 <= bits.length; i += 8) {
+                    bytes.push(parseInt(bits.substr(i, 8), 2));
+                }
+                
+                return new Uint8Array(bytes);
+            }
 
-// ================= FILTROS =================
-function renderAdminRecords() {
-  const userId = filterUser.value;
-  const date = filterDate.value;
-  let filtered = [...records];
+            hmacSha1(key, message) {
+                const blockSize = 64;
+                
+                if (key.length > blockSize) {
+                    key = sha1.array(key);
+                }
+                
+                if (key.length < blockSize) {
+                    const paddedKey = new Uint8Array(blockSize);
+                    paddedKey.set(key);
+                    key = paddedKey;
+                }
+                
+                const oKeyPad = new Uint8Array(blockSize);
+                const iKeyPad = new Uint8Array(blockSize);
+                
+                for (let i = 0; i < blockSize; i++) {
+                    oKeyPad[i] = key[i] ^ 0x5c;
+                    iKeyPad[i] = key[i] ^ 0x36;
+                }
+                
+                const innerHash = sha1.array(this.concatArrays(iKeyPad, message));
+                return new Uint8Array(sha1.array(this.concatArrays(oKeyPad, new Uint8Array(innerHash))));
+            }
 
-  if(userId) filtered = filtered.filter(r => r.userId == userId);
-  if(date) {
-    filtered = filtered.filter(r => getDateOnly(r.timestamp) === date);
-  }
+            concatArrays(a, b) {
+                const result = new Uint8Array(a.length + b.length);
+                result.set(a);
+                result.set(b, a.length);
+                return result;
+            }
 
-  const filterText = userId || date ? ` (${filtered.length} de ${records.length})` : ` (${filtered.length} total)`;
-  recordCount.textContent = filterText;
+            generateOTP(counter) {
+                const key = this.base32Decode(this.secret);
+                const message = new Uint8Array(8);
+                
+                for (let i = 7; i >= 0; i--) {
+                    message[i] = counter & 0xff;
+                    counter = counter >> 8;
+                }
+                
+                const hash = this.hmacSha1(key, message);
+                const offset = hash[hash.length - 1] & 0x0f;
+                
+                const truncatedHash = (
+                    ((hash[offset] & 0x7f) << 24) |
+                    ((hash[offset + 1] & 0xff) << 16) |
+                    ((hash[offset + 2] & 0xff) << 8) |
+                    (hash[offset + 3] & 0xff)
+                );
+                
+                const otp = truncatedHash % 1000000;
+                return otp.toString().padStart(6, '0');
+            }
 
-  recordsBody.innerHTML = filtered.slice().reverse()
-    .map(r => `
-      <tr>
-        <td>${r.id}</td>
-        <td>${r.name}</td>
-        <td><span class="badge ${r.type === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${r.type.toUpperCase()}</span></td>
-        <td>${formatDateForDisplay(r.timestamp)}</td>
-      </tr>
-    `).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">Sin registros para mostrar</td></tr>`;
-}
+            verify(token, window = 1) {
+                const currentTime = Math.floor(Date.now() / 1000);
+                const timeStep = 30;
+                const currentCounter = Math.floor(currentTime / timeStep);
+                
+                for (let i = -window; i <= window; i++) {
+                    const testCounter = currentCounter + i;
+                    const generatedToken = this.generateOTP(testCounter);
+                    
+                    if (generatedToken === token) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+        }
 
-function filterToday() {
-  filterDate.value = getTodayDateOnly();
-  renderAdminRecords();
-}
+        // ========== FUNCIONES DE GOOGLE SHEETS ==========
+        
+        async function callGoogleScript(action, data) {
+            showLoading(true);
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        ...data
+                    })
+                });
 
-function filterYesterday() {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  filterDate.value = yesterday.toISOString().split('T')[0];
-  renderAdminRecords();
-}
+                const result = await response.json();
+                showLoading(false);
+                return result;
+            } catch (error) {
+                showLoading(false);
+                console.error('Error llamando a Google Script:', error);
+                return { success: false, message: 'Error de conexion' };
+            }
+        }
 
-function clearFilters() {
-  filterUser.value = '';
-  filterDate.value = '';
-  renderAdminRecords();
-}
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+        }
 
-function showScreen(id) {
-  document.querySelectorAll(".container").forEach(c => c.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-}
+        // ========== FUNCIONES DE FECHA Y HORA ==========
+        
+        function updateDateTime() {
+            const now = new Date();
+            
+            const optionsFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const fechaElement = document.getElementById('currentDate');
+            if (fechaElement) {
+                fechaElement.textContent = now.toLocaleDateString('es-GT', optionsFecha);
+            }
+            
+            const horaString = now.toLocaleTimeString('es-GT', { hour12: false });
+            const horaElement = document.getElementById('currentTime');
+            if (horaElement) {
+                horaElement.textContent = horaString;
+            }
+            
+            const clockDisplay = document.getElementById('clockDisplay');
+            if (clockDisplay) {
+                clockDisplay.textContent = horaString;
+            }
+            
+            const attendanceDate = document.getElementById('attendanceDate');
+            if (attendanceDate) {
+                attendanceDate.textContent = now.toLocaleDateString('es-GT', optionsFecha);
+            }
+        }
 
-function logout() {
-  currentUser = null;
-  username.value = codeInput.value = setupCodeInput.value = "";
-  showScreen("loginScreen");
-}
+        // ========== LOGIN ==========
+        
+        async function checkUser() {
+            const username = document.getElementById('usernameInput').value.trim().toLowerCase();
+            
+            if (!username) {
+                showAlert('Ingrese su usuario', 'danger', 'alertStep1');
+                return;
+            }
 
-function exportCSV() {
-  const userId = filterUser?.value;
-  const date = filterDate?.value;
-  let filtered = [...records];
+            currentUsername = username;
+            
+            const result = await callGoogleScript('checkUser', { username: username });
+            
+            if (!result.success) {
+                showAlert(result.message || 'Usuario no encontrado', 'danger', 'alertStep1');
+                return;
+            }
 
-  if(userId) filtered = filtered.filter(r => r.userId == userId);
-  if(date) {
-    filtered = filtered.filter(r => getDateOnly(r.timestamp) === date);
-  }
+            if (result.isConfigured) {
+                showLoginStep2();
+            } else {
+                showQRSetup();
+            }
+        }
 
-  let csv = 'ID,Nombre,Tipo,Fecha y Hora\n';
-  filtered.forEach(r => {
-    csv += `${r.id},"${r.name}",${r.type},"${formatDateForDisplay(r.timestamp)}"\n`;
-  });
+        function showQRSetup() {
+            const secret = generateSecret();
+            localStorage.setItem(`user_${currentUsername}_secret_temp`, secret);
+            document.getElementById('secretKeyDisplay').textContent = formatSecret(secret);
+            
+            const otpauthUrl = `otpauth://totp/COMCESA:${currentUsername}?secret=${secret}&issuer=COMCESA`;
+            
+            const qrcodeDiv = document.getElementById('qrcode');
+            qrcodeDiv.innerHTML = '';
+            
+            new QRCode(qrcodeDiv, {
+                text: otpauthUrl,
+                width: 256,
+                height: 256,
+                colorDark: '#003D7A',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            document.getElementById('loginStep1').classList.add('hidden');
+            document.getElementById('qrSetupScreen').classList.remove('hidden');
+        }
 
-  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const fileName = userId || date ? 
-    `asistencias_filtradas_${getTodayDateOnly()}.csv` :
-    `asistencias_completas_${getTodayDateOnly()}.csv`;
-  a.download = fileName;
-  a.click();
-  window.URL.revokeObjectURL(url);
+        async function completeSetup() {
+            const code = document.getElementById('setupVerificationCode').value.trim();
+            
+            if (code.length !== 6) {
+                showAlert('El codigo debe tener 6 digitos', 'danger', 'alertQrSetup');
+                return;
+            }
 
-  alert(`✅ ${filtered.length} registros exportados a CSV`);
-}
-</script>
+            if (!/^\d{6}$/.test(code)) {
+                showAlert('El codigo debe ser numerico', 'danger', 'alertQrSetup');
+                return;
+            }
+
+            const secret = localStorage.getItem(`user_${currentUsername}_secret_temp`);
+            const totp = new TOTP(secret);
+            const isValid = totp.verify(code);
+
+            if (!isValid) {
+                showAlert('Codigo incorrecto o expirado', 'danger', 'alertQrSetup');
+                return;
+            }
+
+            const result = await callGoogleScript('completeSetup', {
+                username: currentUsername,
+                secret: secret
+            });
+
+            if (result.success) {
+                localStorage.removeItem(`user_${currentUsername}_secret_temp`);
+                showAlert('Configuracion completada', 'success', 'alertQrSetup');
+                
+                setTimeout(() => {
+                    loginUser();
+                }, 1500);
+            } else {
+                showAlert(result.message || 'Error al configurar', 'danger', 'alertQrSetup');
+            }
+        }
+
+        function showLoginStep2() {
+            document.getElementById('displayUsername').textContent = currentUsername;
+            document.getElementById('loginStep1').classList.add('hidden');
+            document.getElementById('loginStep2').classList.remove('hidden');
+        }
+
+        async function verifyLogin() {
+            const code = document.getElementById('loginCode').value.trim();
+            
+            if (code.length !== 6) {
+                showAlert('El codigo debe tener 6 digitos', 'danger', 'alertStep2');
+                return;
+            }
+
+            if (!/^\d{6}$/.test(code)) {
+                showAlert('El codigo debe ser numerico', 'danger', 'alertStep2');
+                return;
+            }
+
+            loginUser();
+        }
+
+        async function loginUser() {
+            const result = await callGoogleScript('login', { username: currentUsername });
+            
+            if (result.success) {
+                proceedToSystem(result.user);
+            } else {
+                showAlert(result.message || 'Error al iniciar sesion', 'danger', 'alertStep2');
+            }
+        }
+
+        function backToUsername() {
+            document.getElementById('loginStep2').classList.add('hidden');
+            document.getElementById('loginStep1').classList.remove('hidden');
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('loginCode').value = '';
+            currentUsername = '';
+        }
+
+        function proceedToSystem(user) {
+            currentUser = user;
+            currentUser.username = currentUsername;
+
+            localStorage.setItem('currentSession', JSON.stringify(currentUser));
+
+            document.getElementById('loginStep1').classList.add('hidden');
+            document.getElementById('loginStep2').classList.add('hidden');
+            document.getElementById('qrSetupScreen').classList.add('hidden');
+            document.getElementById('mainSystem').classList.remove('hidden');
+
+            const initials = currentUser.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('userName').textContent = currentUser.nombre;
+            document.getElementById('userRole').textContent = currentUser.cargo;
+
+            if (currentUser.esAdmin === 'SI') {
+                document.getElementById('adminNav').classList.remove('hidden');
+            }
+
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+
+            showNavigation();
+        }
+
+        // ========== NAVEGACION ==========
+        
+        function showNavigation() {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('navigationCards').classList.remove('hidden');
+            if (currentUser && currentUser.esAdmin === 'SI') {
+                document.getElementById('adminNav').classList.remove('hidden');
+            }
+            currentSection = 'navigation';
+        }
+
+        async function showSection(section) {
+            document.getElementById('navigationCards').classList.add('hidden');
+            const adminNav = document.getElementById('adminNav');
+            if (adminNav) {
+                adminNav.classList.add('hidden');
+            }
+            
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            
+            const sectionMap = {
+                'attendance': 'attendanceSection',
+                'vacations': 'vacationsSection',
+                'igss': 'igssSection',
+                'adminAttendance': 'adminAttendanceSection',
+                'adminVacations': 'adminVacationsSection'
+            };
+            
+            const sectionId = sectionMap[section];
+            if (sectionId) {
+                document.getElementById(sectionId).classList.add('active');
+                currentSection = section;
+                
+                if (section === 'attendance') {
+                    await loadTodayAttendance();
+                } else if (section === 'vacations') {
+                    await loadVacationHistory();
+                } else if (section === 'igss') {
+                    await loadIGSSAppointments();
+                } else if (section === 'adminAttendance') {
+                    await loadEmployeeList();
+                } else if (section === 'adminVacations') {
+                    await loadVacationRequests();
+                }
+            }
+        }
+
+        // ========== ASISTENCIA ==========
+        
+        async function clockIn() {
+            const now = new Date();
+            const currentTime = now.toTimeString().substring(0, 5);
+            const expectedTime = currentUser.horaEntrada;
+            const diff = calculateTimeDifference(expectedTime, currentTime);
+            
+            let status = 'A tiempo';
+            let alertType = 'success';
+            let message = 'Entrada registrada a las ' + currentTime;
+            
+            if (diff > 0) {
+                status = 'Tarde';
+                alertType = 'danger';
+                message = 'Entrada registrada con ' + formatTimeDifference(diff) + ' de retraso';
+            }
+            
+            const result = await callGoogleScript('clockIn', {
+                username: currentUser.username,
+                nombre: currentUser.nombre,
+                fecha: now.toISOString().split('T')[0],
+                hora: currentTime,
+                horaEsperada: expectedTime,
+                estado: status,
+                diferencia: diff
+            });
+            
+            if (result.success) {
+                showAlert(message, alertType, 'attendanceAlert');
+                await loadTodayAttendance();
+            } else {
+                showAlert('Error al registrar entrada', 'danger', 'attendanceAlert');
+            }
+        }
+
+        async function clockOut() {
+            const now = new Date();
+            const currentTime = now.toTimeString().substring(0, 5);
+            const dayOfWeek = now.getDay();
+            const isFriday = dayOfWeek === 5;
+            const expectedTime = isFriday ? currentUser.horaSalidaV : currentUser.horaSalidaLJ;
+            const diff = calculateTimeDifference(expectedTime, currentTime);
+            
+            let status = 'A tiempo';
+            let alertType = 'success';
+            let message = 'Salida registrada a las ' + currentTime;
+            
+            if (diff < 0) {
+                status = 'Temprano';
+                alertType = 'warning';
+                message = 'Salida registrada ' + formatTimeDifference(Math.abs(diff)) + ' antes';
+            }
+            
+            const result = await callGoogleScript('clockOut', {
+                username: currentUser.username,
+                nombre: currentUser.nombre,
+                fecha: now.toISOString().split('T')[0],
+                hora: currentTime,
+                horaEsperada: expectedTime,
+                estado: status,
+                diferencia: diff
+            });
+            
+            if (result.success) {
+                showAlert(message, alertType, 'attendanceAlert');
+                await loadTodayAttendance();
+            } else {
+                showAlert('Error al registrar salida', 'danger', 'attendanceAlert');
+            }
+        }
+
+        function calculateTimeDifference(expected, actual) {
+            const [expHour, expMin] = expected.split(':').map(Number);
+            const [actHour, actMin] = actual.split(':').map(Number);
+            const expMinutes = expHour * 60 + expMin;
+            const actMinutes = actHour * 60 + actMin;
+            return actMinutes - expMinutes;
+        }
+
+        function formatTimeDifference(minutes) {
+            const absMinutes = Math.abs(minutes);
+            const hours = Math.floor(absMinutes / 60);
+            const mins = absMinutes % 60;
+            
+            if (hours > 0) {
+                return hours + 'h ' + mins + 'm';
+            } else {
+                return mins + 'm';
+            }
+        }
+
+        async function loadTodayAttendance() {
+            const result = await callGoogleScript('getAttendance', {});
+            
+            if (!result.success) {
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = result.data.filter(r => r.username === currentUser.username && r.fecha === today);
+            
+            const tbody = document.getElementById('todayAttendance');
+            if (todayRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Sin registros</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = todayRecords.map(r => `
+                <tr>
+                    <td>${r.tipo}</td>
+                    <td>${r.hora}</td>
+                    <td>${r.horaEsperada}</td>
+                    <td><span class="status-badge status-${r.estado === 'A tiempo' ? 'ontime' : (r.estado === 'Tarde' ? 'late' : 'early')}">${r.estado}</span></td>
+                    <td>${r.diferencia !== 0 ? (r.diferencia > 0 ? '+' : '') + formatTimeDifference(r.diferencia) : '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== VACACIONES ==========
+        
+        async function submitVacation(event) {
+            event.preventDefault();
+            
+            const result = await callGoogleScript('submitVacation', {
+                username: currentUser.username,
+                nombreCompleto: currentUser.nombre,
+                email: currentUser.email,
+                supervisor: currentUser.supervisor,
+                tipo: document.getElementById('vacationType').value,
+                fechaInicio: document.getElementById('vacationStartDate').value,
+                fechaFin: document.getElementById('vacationEndDate').value,
+                dias: document.getElementById('vacationDays').value,
+                motivo: document.getElementById('vacationReason').value
+            });
+            
+            if (result.success) {
+                showAlert('Solicitud enviada correctamente', 'success', 'vacationAlert');
+                event.target.reset();
+                await loadVacationHistory();
+            } else {
+                showAlert('Error al enviar solicitud', 'danger', 'vacationAlert');
+            }
+        }
+
+        async function loadVacationHistory() {
+            const result = await callGoogleScript('getVacations', {});
+            
+            if (!result.success) {
+                return;
+            }
+
+            const userRequests = result.data.filter(r => r.username === currentUser.username);
+            
+            const tbody = document.getElementById('vacationHistory');
+            if (userRequests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Sin solicitudes</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = userRequests.map(r => `
+                <tr>
+                    <td>${new Date(r.fechaSolicitud).toLocaleDateString('es-GT')}</td>
+                    <td>${r.fechaInicio} al ${r.fechaFin}</td>
+                    <td>${r.dias}</td>
+                    <td><span class="status-badge status-${r.estado}">${r.estado}</span></td>
+                    <td>${r.respuesta || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const startDateInput = document.getElementById('vacationStartDate');
+            const endDateInput = document.getElementById('vacationEndDate');
+            const daysInput = document.getElementById('vacationDays');
+            
+            function calculateDays() {
+                const start = new Date(startDateInput.value);
+                const end = new Date(endDateInput.value);
+                
+                if (start && end && start <= end) {
+                    const diffTime = Math.abs(end - start);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    daysInput.value = diffDays;
+                }
+            }
+            
+            if (startDateInput && endDateInput) {
+                startDateInput.addEventListener('change', calculateDays);
+                endDateInput.addEventListener('change', calculateDays);
+            }
+        });
+
+        // ========== IGSS ==========
+        
+        async function submitIGSS(event) {
+            event.preventDefault();
+            
+            const result = await callGoogleScript('submitIGSS', {
+                username: currentUser.username,
+                nombreCompleto: currentUser.nombre,
+                tipo: document.getElementById('igssType').value,
+                fecha: document.getElementById('igssDate').value,
+                hora: document.getElementById('igssTime').value,
+                lugar: document.getElementById('igssLocation').value,
+                constancia: document.getElementById('igssConstancia').value,
+                observaciones: document.getElementById('igssNotes').value
+            });
+            
+            if (result.success) {
+                showAlert('Cita registrada correctamente', 'success', 'igssAlert');
+                event.target.reset();
+                await loadIGSSAppointments();
+            } else {
+                showAlert('Error al registrar cita', 'danger', 'igssAlert');
+            }
+        }
+
+        async function loadIGSSAppointments() {
+            // Por ahora mostrar mensaje
+            const container = document.getElementById('igssAppointments');
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 32px;">Sin citas registradas</p>';
+        }
+
+        // ========== ADMIN ==========
+        
+        async function loadEmployeeList() {
+            // Cargar desde Google Sheets en produccion
+            const filterEmployee = document.getElementById('filterEmployee');
+            const vacationFilterEmployee = document.getElementById('vacationFilterEmployee');
+            
+            let employeeOptions = '<option value="all">Todos</option>';
+            employeeOptions += '<option value="erick.garcia">Erick Garcia</option>';
+            employeeOptions += '<option value="bethzabe.delaroca">Aida De La Roca</option>';
+            // Agregar mas empleados...
+            
+            if (filterEmployee) filterEmployee.innerHTML = employeeOptions;
+            if (vacationFilterEmployee) vacationFilterEmployee.innerHTML = employeeOptions;
+        }
+
+        async function applyFilters() {
+            const result = await callGoogleScript('getAttendance', {});
+            
+            if (!result.success) {
+                return;
+            }
+
+            const employee = document.getElementById('filterEmployee').value;
+            const period = document.getElementById('filterPeriod').value;
+            
+            let filtered = result.data;
+            
+            if (employee !== 'all') {
+                filtered = filtered.filter(r => r.username === employee);
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            if (period === 'today') {
+                filtered = filtered.filter(r => r.fecha === today);
+            }
+            
+            displayAdminAttendance(filtered);
+        }
+
+        function displayAdminAttendance(records) {
+            const tbody = document.getElementById('adminAttendanceData');
+            
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Sin registros</td></tr>';
+                updateStatistics([]);
+                return;
+            }
+            
+            const grouped = {};
+            records.forEach(r => {
+                const key = `${r.username}-${r.fecha}`;
+                if (!grouped[key]) {
+                    grouped[key] = { username: r.username, nombre: r.nombre, fecha: r.fecha, entrada: null, salida: null };
+                }
+                if (r.tipo === 'ENTRADA') grouped[key].entrada = r;
+                if (r.tipo === 'SALIDA') grouped[key].salida = r;
+            });
+            
+            tbody.innerHTML = Object.values(grouped).map(g => `
+                <tr>
+                    <td>${g.nombre}</td>
+                    <td>${g.fecha}</td>
+                    <td>${g.entrada?.hora || '-'}</td>
+                    <td>${g.salida?.hora || '-'}</td>
+                    <td>${g.entrada ? `<span class="status-badge status-${g.entrada.estado === 'A tiempo' ? 'ontime' : 'late'}">${g.entrada.estado}</span>` : '-'}</td>
+                    <td>${g.salida ? `<span class="status-badge status-${g.salida.estado === 'A tiempo' ? 'ontime' : 'early'}">${g.salida.estado}</span>` : '-'}</td>
+                    <td>${g.entrada ? (g.entrada.diferencia !== 0 ? (g.entrada.diferencia > 0 ? '+' : '') + formatTimeDifference(g.entrada.diferencia) : '-') : '-'}</td>
+                </tr>
+            `).join('');
+            
+            updateStatistics(records);
+        }
+
+        function updateStatistics(records) {
+            const entradas = records.filter(r => r.tipo === 'ENTRADA');
+            const total = entradas.length;
+            const late = entradas.filter(r => r.estado === 'Tarde').length;
+            const onTimePercent = total > 0 ? ((total - late) / total * 100).toFixed(1) : 100;
+            const totalLateMinutes = entradas
+                .filter(r => r.diferencia > 0)
+                .reduce((sum, r) => sum + r.diferencia, 0);
+            
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statLate').textContent = late;
+            document.getElementById('statOnTime').textContent = onTimePercent + '%';
+            document.getElementById('statTotalLate').textContent = formatTimeDifference(totalLateMinutes);
+        }
+
+        function exportToExcel() {
+            alert('Funcion de exportacion en desarrollo');
+        }
+
+        async function loadVacationRequests() {
+            const result = await callGoogleScript('getVacations', {});
+            const tbody = document.getElementById('adminVacationData');
+            
+            if (!result.success || result.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Sin solicitudes</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = result.data.map(r => `
+                <tr>
+                    <td>${r.nombre}</td>
+                    <td>${new Date(r.fechaSolicitud).toLocaleDateString('es-GT')}</td>
+                    <td>${r.fechaInicio} al ${r.fechaFin}</td>
+                    <td>${r.dias}</td>
+                    <td>${r.motivo}</td>
+                    <td><span class="status-badge status-${r.estado}">${r.estado}</span></td>
+                    <td>
+                        ${r.estado === 'pendiente' ? `
+                            <button class="btn btn-success" style="padding: 6px 12px; font-size: 12px; margin: 2px;" onclick="approveVacation(${r.id})">Aprobar</button>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px; margin: 2px;" onclick="rejectVacation(${r.id})">Rechazar</button>
+                        ` : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function applyVacationFilters() {
+            await loadVacationRequests();
+        }
+
+        async function approveVacation(id) {
+            const result = await callGoogleScript('approveVacation', {
+                requestId: id,
+                comentario: 'Aprobado por ' + currentUser.nombre
+            });
+            
+            if (result.success) {
+                alert('Solicitud aprobada');
+                await loadVacationRequests();
+            }
+        }
+
+        async function rejectVacation(id) {
+            const motivo = prompt('Motivo del rechazo:');
+            if (motivo) {
+                const result = await callGoogleScript('rejectVacation', {
+                    requestId: id,
+                    motivo: motivo
+                });
+                
+                if (result.success) {
+                    alert('Solicitud rechazada');
+                    await loadVacationRequests();
+                }
+            }
+        }
+
+        // ========== UTILIDADES ==========
+        
+        function generateSecret() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let secret = '';
+            for (let i = 0; i < 32; i++) {
+                secret += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return secret;
+        }
+
+        function formatSecret(secret) {
+            return secret.match(/.{1,4}/g).join(' ');
+        }
+
+        function showAlert(message, type, elementId) {
+            const alert = document.getElementById(elementId);
+            if (alert) {
+                alert.className = `alert alert-${type} show`;
+                alert.textContent = message;
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                }, 5000);
+            }
+        }
+
+        function logout() {
+            if (confirm('Cerrar sesion?')) {
+                localStorage.removeItem('currentSession');
+                location.reload();
+            }
+        }
+
+        // ========== INICIALIZACION ==========
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            const session = localStorage.getItem('currentSession');
+            if (session) {
+                currentUser = JSON.parse(session);
+                currentUsername = currentUser.username;
+                
+                document.getElementById('loginStep1').classList.add('hidden');
+                document.getElementById('mainSystem').classList.remove('hidden');
+                
+                const initials = currentUser.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                document.getElementById('userAvatar').textContent = initials;
+                document.getElementById('userName').textContent = currentUser.nombre;
+                document.getElementById('userRole').textContent = currentUser.cargo;
+
+                if (currentUser.esAdmin === 'SI') {
+                    document.getElementById('adminNav').classList.remove('hidden');
+                }
+            }
+            
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+        });
+    </script>
 </body>
 </html>
-
-
-
